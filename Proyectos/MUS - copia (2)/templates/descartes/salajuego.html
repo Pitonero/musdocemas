@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sala de Juego - Mus Online</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .game-room-container {
+            max-width: 1000px;
+            width: 100%;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #374151;
+            margin-bottom: 20px;
+        }
+
+        /* Lista de Mesas Disponibles */
+        .table-list {
+            margin-bottom: 30px;
+        }
+
+        .table-list h2 {
+            font-size: 20px;
+            color: #2563eb;
+            margin-bottom: 15px;
+        }
+
+        .table-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .table-card img {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin-right: 15px;
+        }
+
+        .table-info {
+            flex: 1;
+        }
+
+        .table-info h3 {
+            font-size: 18px;
+            margin-bottom: 5px;
+            color: #374151;
+        }
+
+        .table-info p {
+            font-size: 14px;
+            color: #555;
+        }
+
+        .join-button {
+            padding: 8px 12px;
+            font-size: 14px;
+            color: white;
+            background-color: #2563eb;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .join-button:hover {
+            background-color: #1d4ed8;
+        }
+
+        /* Botón de Partida Rápida */
+        .quick-join {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .quick-join button {
+            padding: 12px 20px;
+            font-size: 16px;
+            color: white;
+            background-color: #16a34a;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .quick-join button:hover {
+            background-color: #15803d;
+        }
+
+        /* Creación de Nuevas Mesas */
+        .create-table {
+            margin-top: 30px;
+        }
+
+        .create-table h2 {
+            font-size: 20px;
+            color: #2563eb;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .create-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            color: white;
+            background-color: #2563eb;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .create-button:hover {
+            background-color: #1d4ed8;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-room-container">
+        <h1>Sala de Juego {{ usuario }}</h1>
+
+        <!-- Botón de Partida Rápida -->
+        <div class="quick-join">
+            <button>Unirse a una Partida Rápida</button>
+        </div>
+
+        <!-- Lista de Mesas Disponibles -->
+        <div class="table-list">
+            <h2>Mesas Disponibles</h2>
+
+            <!-- Ejemplo de mesa disponible -->
+            <div class="table-card">
+                <div class="table-info">
+                    <h3>Mesa 1</h3>
+                    <p>Jugadores: 2/4 | Tipo: Público | Estado: Esperando jugadores</p>
+                </div>
+                <button class="join-button">Unirse</button>
+            </div>
+
+            <div class="table-card">
+                <div class="table-info">
+                    <h3>Mesa 2</h3>
+                    <p>Jugadores: 4/4 | Tipo: Privado | Estado: En juego</p>
+                </div>
+                <button class="join-button" disabled>En juego</button>
+            </div>
+
+            <div class="table-card">
+                <div class="table-info">
+                    <h3>Mesa 3</h3>
+                    <p>Jugadores: 3/4 | Tipo: Público | Estado: Esperando jugadores</p>
+                </div>
+                <button class="join-button">Unirse</button>
+            </div>
+
+            <!-- Más mesas pueden añadirse aquí -->
+        </div>
+
+        <!-- Creación de Nuevas Mesas -->
+        <div class="create-table">
+            <h2>Crear Nueva Mesa</h2>
+
+            <form action="crear_mesa.html" method="POST">
+                <div class="form-group">
+                    <label for="table-name">Nombre de la Mesa</label>
+                    <input type="text" id="table-name" name="table-name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="table-type">Tipo de Mesa</label>
+                    <select id="table-type" name="table-type">
+                        <option value="public">Pública</option>
+                        <option value="private">Privada</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="password-group" style="display: none;">
+                    <label for="password">Contraseña (solo para mesas privadas)</label>
+                    <input type="password" id="password" name="password">
+                </div>
+
+                <button type="submit" class="create-button">Crear Mesa</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const tableTypeSelect = document.getElementById('table-type');
+        const passwordGroup = document.getElementById('password-group');
+
+        tableTypeSelect.addEventListener('change', function() {
+            if (tableTypeSelect.value === 'private') {
+                passwordGroup.style.display = 'block';
+            } else {
+                passwordGroup.style.display = 'none';
+            }
+        });
+    </script>
+
+</body>
+</html>

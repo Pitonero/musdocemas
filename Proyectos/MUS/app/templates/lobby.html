@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Sala de Espera</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <h1>Sala de Espera</h1>
+    <div id="players">
+        <h2>Jugadores Conectados</h2>
+        <ul id="player-list">
+            <!-- Lista dinámica de jugadores en la sala de espera -->
+        </ul>
+    </div>
+    <button id="start-game" onclick="startGame()">Iniciar Partida</button>
+
+    <!-- JavaScript para WebSocket -->
+    <script src="{{ url_for('static', filename='js/socketio.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/lobby.js') }}"></script>
+</body>
+</html>
+

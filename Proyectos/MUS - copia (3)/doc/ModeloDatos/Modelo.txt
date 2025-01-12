@@ -1,0 +1,148 @@
+Propuesta de modelo estructurado para registrar el transcurso de cada juego, ronda y lance. 
+Este modelo utiliza una combinación de **eventos**, **estados del juego** y **reglas claras**, 
+implementados en una base de datos o un sistema similar para garantizar su estructura y trazabilidad.
+
+---
+
+### **Modelo de Gestión**
+
+#### **1. Entidades Principales**
+Estas entidades representan los elementos básicos del juego.
+
+
+1. **Mesa**
+   - Fecha.
+   - ID de la mesa.
+   - Jugadores (1, 2, 3, 4) y parejas.
+   - ID de la partida.
+   - Estado de la partida (en curso, terminada).
+   - Estado de la mesa (en espera, en juego, en curso, cerrada).
+
+2. **Partida**
+   - Fecha.
+   - ID de la mesa.
+   - ID de la partida.
+   - Estado de la partida (en curso, terminada).
+   - Juegos actuales de cada pareja.
+
+3. **Juego**
+   - Fecha.
+   - ID de la mesa.
+   - ID de la partida a la que pertenece.
+   - ID del juego.
+   - Estado del juego (en curso, terminado).
+   - Puntos actuales del juego de cada pareja.
+
+4. **Ronda**
+   - Fecha.
+   - ID de la mesa.
+   - ID de la partida a la que pertenece.
+   - ID del juego al que pertenece.
+   - ID de ronda.
+   - Estado (en curso, terminado).
+   - Puntos acumulados en la ronda.
+
+5. **Lance**
+   - Fecha.
+   - ID de la mesa.
+   - Estado de la mesa (en espera, en juego, en curso, cerrada).
+   - Jugadores (1, 2, 3, 4) y parejas.
+   - ID de la partida a la que pertenece.
+   - ID del juego al que pertenece.
+   - ID de la ronda a la que pertenece.
+   - ID del lance.
+   - Tipo (Grande, Chica, Pares, Juego).
+   - Estado (en curso, terminado).
+   - Apuestas realizadas.
+   - Resultado (ganadores y puntos obtenidos).
+
+6. **Apuesta**
+   - Fecha (date).
+   - ID de la mesa (Identificador de la mesa de la partida).
+   - Lista Jugadores (1, 2, 3, 4) y parejas.
+   - ID de la partida a la que pertenece (al mejor de 2 o 3 juegos).
+   - ID del juego al que pertenece (hasta conseguir los 40 puntos).
+   - ID de la ronda a la que pertenece (secuencial de rondas hasta completar un juego).
+   - ID del lance al que pertenece. (1 - Grande, 2 - Chica, 3 - Pares, 4 - Juego).
+   - ID de la apuesta (Secuencia de acciones por cada jugador en un lance). 
+   - Jugador que realiza la apuesta.
+   - Acción tomada (1 - Pasar, 2 - Envidar, 3 - Aceptar, 4 - Órdago).
+   - Cantidad apostada.
+   - Resultado de la acción (1 - Veo, 2 - Paso, 3 - Órdago).
+
+---
+
+#### **2. Flujo del Juego**
+
+1. **Inicio de un Lance**
+   - Se crea un nuevo lance (e.g., "Grande") y se registra el jugador mano.
+   - Se inicializa el estado del lance como "en curso".
+   - Se establece un turno inicial basado en el jugador mano.
+
+2. **Gestión de Turnos y Acciones**
+   - Cada acción del jugador (Pasar, Envidar, Subir, Órdago) se registra como un evento de apuesta.
+   - El sistema calcula quién es el siguiente jugador que debe intervenir.
+   - Las reglas determinan si el jugador puede intervenir o no (basadas en pareja, turno y estado de la apuesta actual).
+
+3. **Resolución de Apuestas**
+   - Cuando una apuesta es rechazada o no se acepta, se suma un amarraco a la pareja que apostó.
+   - Si una apuesta es aceptada, se registra la cantidad apostada como pendiente.
+   - Si hay un órdago, se decide el resultado del lance (ganadores y puntos totales).
+
+4. **Finalización del Lance**
+   - Cuando todos los jugadores han actuado, se marca el lance como "terminado".
+   - Se suman los puntos obtenidos al marcador de la pareja ganadora.
+
+5. **Control del Juego**
+   - Se evalúa si alguna pareja ha alcanzado los 40 puntos.
+   - Si sí, se marca el juego como "terminado" y se declara un ganador.
+
+---
+
+#### **3. Estructura de Datos**
+
+##### **Base de Datos Relacional (ejemplo simplificado)**
+- **Juegos**
+  - `id`, `estado`, `pareja_1_puntos`, `pareja_2_puntos`, `ganadores`
+- **Rondas**
+  - `id`, `juego_id`, `numero`, `estado`
+- **Lances**
+  - `id`, `ronda_id`, `tipo`, `estado`, `resultado`
+- **Apuestas**
+  - `id`, `lance_id`, `jugador_id`, `accion`, `cantidad`, `resultado`
+
+---
+
+#### **4. Implementación Técnica**
+
+1. **Backend**
+   - Utiliza un framework como Flask o Django.
+   - Implementa APIs REST para registrar y consultar las acciones y el estado del juego.
+   - Emplea websockets para actualizaciones en tiempo real.
+
+2. **Frontend**
+   - Usa un estado centralizado (Redux, Context API en React) para reflejar el estado del juego.
+   - Interfaz clara que guíe a los jugadores sobre las opciones disponibles en su turno.
+
+3. **Reglas del Juego**
+   - Implementa reglas como funciones específicas, por ejemplo:
+     ```python
+     def calcular_turno(actual, accion):
+         # Lógica para determinar el siguiente jugador
+         pass
+     ```
+
+4. **Persistencia**
+   - Usa una base de datos para persistir la información del juego y permitir reanudarlo en caso de desconexión.
+
+---
+
+#### **5. Alternativa Simplicada: Modelo por Logs**
+Si prefieres simplicidad inicial, podrías usar un modelo basado en un historial de acciones:
+- Cada acción del jugador se guarda en un log:
+  ```
+  [juego_id, ronda_id, lance_id, jugador_id, accion, cantidad, resultado]
+  ```
+- Luego, puedes reconstruir el estado actual del juego al leer el log completo.
+
+---

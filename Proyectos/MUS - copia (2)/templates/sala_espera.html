@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sala de Espera - Musdocemas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <div id="username" data-username="{{ usuario }}" style="display: none;"></div>	
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+	<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mesa_juego.css') }}">
+</head>
+<body>
+    <header class="header">
+ 		<div style="display: flex; align-items: center;">
+			<img src="../static/img/logomus.webp" alt="Logo de Mus 12 Más" onclick="window.location.href='/'" style="width: 50px; margin-right: 10px;">
+			<h1 style="margin: 0;">Doce Más - Sala de Espera - Bienvenido {{ usuario }}</h1>
+		</div>
+
+		<nav>
+			<a href="{{ url_for('logout') }}" class="btn btn-danger">Cerrar Sesión</a>
+            <button class="crear-mesa-btn" onclick="crearMesa()"><i class="fas fa-plus"></i> Crear Nueva Mesa</button>
+        </nav>
+    </header>
+	<div class="sala-espera">
+		<!-- Contenedor de las mesas -->
+		<div class="mesas-container" id="mesasContainer">
+		</div>
+		<!-- Contenedor del chat -->
+		<div class="chat">
+			<h3>Chat de la Sala</h3>
+			<div class="mensajes" id="chat-box">
+			</div>				  
+			<input type="text" placeholder="Escribe un mensaje..." class="input-chat" id="chat-message">
+			<button class="enviar-btn" onclick="sendMessage()">Enviar</button>
+			<div class="jugadores-conectados">
+				<h3>Jugadores Conectados</h3>
+					<ul id="player-list"></ul>
+			</div> 
+		</div>
+	</div>
+	<script>
+    document.addEventListener('DOMContentLoaded', () => { 
+		const socket = io.connect();
+        const username = "{{ usuario }}" // document.getElementById("username").dataset.username;
+		const avatarUrl = "../static/{{ avatar }}"; 
+        // Enviar el evento de conexión al servidor con el nombre de usuario
+        socket.emit('join', { username: username });
+       // socket.emit('join_waiting_room', { username: username })
+
+		//Actualiza la lista de jugadores
+		socket.on('update_players', function(players) {
+			//alert('Entra en update players');
+			const playerList = document.getElementById('player-list');
+			//console.log("Playerlist:", playerList);			
+			playerList.innerHTML = '';
+			players.forEach(player => {
+				const li = document.createElement('li');
+				li.innerText = player;
+				//console.log("Player:", player);	
+				playerList.appendChild(li);
+			});
+			// Desplaza automáticamente hacia el final de la lista
+			playerList.scrollTop = playerList.scrollHeight;
+		}); 
+
+
+		// Escuchar el evento 'update_screen' enviado por el servidor
+		socket.on('update_screen', (tables) => {
+			console.log("Mesa elementos: ", Object.keys(tables).length);
+			// Dibujar e Iterar sobre cada mesa
+			for (const mesaId in tables) {
+			// Recuperar los parámetros desde los datos recibidos
+				const estado = tables[mesaId].estado;
+				const jugadores = tables[mesaId].jugadores;
+				const avatares = tables[mesaId].avatares;				
+				const asientos = tables[mesaId]; // Array de usuarios en la mesa
+				console.log(`Mesa ID: ${mesaId}, Mesa:`, estado, asientos, jugadores, avatares);
+				//alert("Update screen: estado: " + estado + "Mesa a tratar: " + mesaId + " Jugadores: " + jugadores);
+				const mesasContainer = document.getElementById("mesasContainer");
+				const nuevaMesa = crearMesaHTML(mesaId, estado, ["", "", "", ""], ["", "", "", ""]);		   
+				mesasContainer.appendChild(nuevaMesa);
+				mesasContainer.scrollTop = mesasContainer.scrollHeight;
+
+					// Actualizar visualmente la mesa
+					const mesaElement = document.querySelector(`#${mesaId}`);
+					//console.log("Mesa element: ", mesaElement); // Debería devolver el elemento <div id="Mesa_1">
+					if (mesaElement) {
+						// Selecciona todos los asientos en la mesa
+						const asientos = mesaElement.querySelectorAll('.jugador');
+
+						jugadores.forEach((jugador, index) => {
+
+							const asiento = asientos[index];
+							const avatarUrl = avatares[index];
+							if (asiento) {
+								if (jugador) {
+									// Si hay un jugador, mostrar su avatar (o color genérico)
+									asiento.style.backgroundImage = "url("+avatarUrl+")";// Cambiar a una URL real si tienes avatares
+								//	asiento.style.backgroundImage = "url('../static/img/avatares/avatar17.png')"; // Cambiar a una URL real si tienes avatares
+									asiento.nextElementSibling.textContent = jugador;	
+									asiento.classList.add('ocupado');
+								} else {
+									// Si no hay usuario, limpiar el asiento
+									asiento.style.backgroundImage = "";
+									asiento.nextElementSibling.textContent = `Jugador ${index + 1}`;	
+									asiento.classList.remove('ocupado');
+								}
+							}
+						});
+					}
+				//});
+			}
+		}); 	
+	});
+    </script>
+	<script>		
+        let mesaCount = 1;
+
+        function inicializarMesas() {
+            const mesasContainer = document.getElementById("mesasContainer");
+            // Mesa 1 - En espera
+            const Mesa_1 = crearMesaHTML(`Mesa_${mesaCount}`, "En Espera", ["aaa", "", "", ""]);
+			mesasContainer.appendChild(Mesa_1);
+        }
+		
+        function crearMesaHTML(nombre, estado, jugadores) {
+            const nuevaMesa = document.createElement("div");
+            nuevaMesa.className = "mesa";
+			nuevaMesa.id = "Mesa_" + mesaCount; // Asignar un ID único a la mesa
+            nuevaMesa.setAttribute("data-mesa-id", nombre) //"Mesa_"+mesaCount); 			
+            nuevaMesa.innerHTML = `
+                <h3>${nombre} - ${estado}</h3>
+                 <div class="tapete">
+                    <div class="jugador jugador-1" data-avatar="avatar1.png" onclick="togglePlayer(this, 'Jugador 1', 0)"></div>
+					<div class="nombre-jugador jugador-1" data-username="">Jugador 1</div>
+
+                    <div class="jugador jugador-2" data-avatar="avatar2.png" onclick="togglePlayer(this, 'Jugador 2', 1)"></div>
+                    <div class="nombre-jugador jugador-2" data-username="">Jugador 2</div>
+
+                    <div class="jugador jugador-3" data-avatar="avatar3.png" onclick="togglePlayer(this, 'Jugador 3', 2)"></div>
+                    <div class="nombre-jugador jugador-3" data-username="">Jugador 3</div>
+
+                    <div class="jugador jugador-4" data-avatar="avatar4.png" onclick="togglePlayer(this, 'Jugador 4', 3)"></div>
+                    <div class="nombre-jugador jugador-4" data-username="">Jugador 4</div>
+
+                    <button class="boton-comenzar" onclick="iniciarJuego(this)">Comenzar</button>
+                </div>
+            `;
+            return nuevaMesa;
+        }
+ 
+		socket.on('crear_mesaPY', (data) => {
+			// Recuperar los parámetros desde los datos recibidos
+			const mesaId = data.table_name; // Nombre de la mesa creada
+			const nroMesa = data.nro_table; // Número de mesa de la solicitud
+			//console.log(`Se va a crear la mesa: ${mesaId}`);
+            const mesasContainer = document.getElementById("mesasContainer");
+            const nuevaMesa = crearMesaHTML(`Mesa_${nroMesa}`, "En Espera", ["", "", "", ""]);					
+            mesasContainer.appendChild(nuevaMesa);
+            mesasContainer.scrollTop = mesasContainer.scrollHeight;
+		});
+
+        socket.on('chat_message', function(data) {
+            const chatBox = document.getElementById('chat-box');
+            const messageElement = document.createElement('p');
+            messageElement.textContent = `${data.username}: ${data.message}`;
+            chatBox.appendChild(messageElement);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        });
+
+		function crearMesa() {
+		    socket.emit('create_table');
+		}
+		
+        function toggleAsiento(elemento, tableId, asientoIndex) {
+			//const avatarUrl = "../static/img/avatares/avatar17.png";
+			const avatarUrl = "../static/{{ avatar }}"; 
+			//alert ("Avatartar: " + avatarUrl);
+            if (!elemento.classList.contains('ocupado')) {
+                elemento.classList.add('ocupado');
+				elemento.style.backgroundImage = `url('${avatarUrl}')`;
+				elemento.setAttribute("data-avatar", avatarUrl);
+				elemento.setAttribute("data-username", usuario); // Asigna el nombre del usuario al asiento
+               // socket.emit('entrar_asiento', { username: usuario, table_id: tableId, asiento: asientoIndex, avatar: avatarUrl });
+            } else {
+                elemento.classList.remove('ocupado');
+			    elemento.style.backgroundImage = "";
+				elemento.removeAttribute("data-username");
+              //  socket.emit('salir_asiento', { username: usuario, table_id: tableId, asiento: asientoIndex });
+            }
+        }
+
+        function togglePlayer(elemento, defaultName, asientoIndex) {
+		//	const avatarUrl = "../static/img/avatares/avatar17.png";
+			const avatarUrl = "../static/{{ avatar }}"; 
+            const mesa = elemento.closest('.mesa');
+            const mesaId = mesa.getAttribute("data-mesa-id"); // Suponiendo que cada mesa tenga un id único como "mesa_1", "mesa_2", etc.
+			//alert("La mesa:" + mesa); 
+			const currentBackground = elemento.style.backgroundImage;
+            const asientosOcupados = mesa.querySelectorAll('.jugador');
+			//console.log("Asientos ocupados:", mesa.querySelectorAll('.jugador'));
+			for (let asiento of asientosOcupados) {
+				const jugadorAsignado = asiento.getAttribute("data-username"); // Obtener el usuario asignado al asiento
+				if (jugadorAsignado === username && asiento !== elemento) {
+					alert("Ya estás en un asiento de esta mesa.");
+					return;
+				}
+			} 
+			// alert("Entra a limpiar asiento del username: " + username);
+            if (currentBackground.includes(avatarUrl)) {
+                elemento.style.backgroundImage = "";
+                elemento.nextElementSibling.textContent = defaultName;
+            //    socket.emit('leave_seat', { username: username, mesa_id: mesaId });
+            } else {
+                elemento.style.backgroundImage = `url('${avatarUrl}')`;
+                elemento.nextElementSibling.textContent = username;
+            //    socket.emit('occupy_seat', { username: username, mesa_id: mesaId });
+            } 
+			//alert("Evento clik en círculo." + username + " table_ID: " + mesaId + "  asientoindex: " + asientoIndex);
+            if (!elemento.classList.contains('ocupado')) {
+                elemento.classList.add('ocupado');
+				elemento.setAttribute("data-username", username);
+				//socket.emit('join_mesa', { username: username, mesa_id: mesaId, asiento: asientoIndex, avatar: avatarUrl });				
+				socket.emit('entrar_asiento', { username: username, mesa_id: mesaId, asiento: asientoIndex, avatar: avatarUrl });
+            } else {
+                elemento.classList.remove('ocupado');
+				elemento.removeAttribute("data-username");
+                socket.emit('salir_asiento', { username: username, mesa_id: mesaId, asiento: asientoIndex, avatar: avatarUrl });
+            }
+        }
+		
+        function verificarMesaCompleta(mesa) {
+            const jugadores = mesa.querySelectorAll(".jugador.occupied");
+            if (jugadores.length === 4) {
+                setTimeout(() => {
+                   // alert("Mesa completa. Redirigiendo al juego...");
+                    window.location.href = "mesa_juego.html"; // Redirige a la página de la partida
+                }, 500);
+		    }
+        } 
+															 
+       // window.onload = inicializarMesas;  
+ 
+		socket.on('update_tables', (tables) => {
+			// Iterar sobre cada mesa
+			Object.keys(tables).forEach((mesaId) => {
+				//alert("Entra en update_tables, Mesa: " + mesaId);
+				const jugadores = tables[mesaId].jugadores;
+				const avatares = tables[mesaId].avatares;
+				const asientos = tables[mesaId]; // Array de usuarios en la mesa
+				console.log(`Mesa ID: ${mesaId}, Mesa:`, asientos, jugadores, avatares);
+				// Actualizar visualmente la mesa
+				const mesaElement = document.querySelector(`#${mesaId}`);
+				//console.log("Mesa element: ", mesaElement); // Debería devolver el elemento <div id="Mesa_1">
+				if (mesaElement) {
+					// Selecciona todos los asientos en la mesa
+					const asientos = mesaElement.querySelectorAll('.jugador');
+
+					jugadores.forEach((jugador, index) => {
+						//const avatarUrl = "../static/{{ avatar }}"; 
+						const avatarUrl = avatares[index];
+						//alert ("Avatar : " + avatarUrl);
+						const asiento = asientos[index];
+						if (asiento) {
+							if (jugador) {
+								// Si hay un jugador, mostrar su avatar (o color genérico)
+								//asiento.style.backgroundImage = "url('../static/img/avatar.png')"; // Cambiar a una URL real si tienes avatares
+								asiento.style.backgroundImage = "url("+avatarUrl+")"; // Cambiar a una URL real si tienes avatares
+								asiento.nextElementSibling.textContent = jugador;	
+								asiento.classList.add('ocupado');
+							} else {
+								// Si no hay usuario, limpiar el asiento
+								asiento.style.backgroundImage = "";
+								asiento.nextElementSibling.textContent = `Jugador ${index + 1}`;	
+								asiento.classList.remove('ocupado');
+							}
+						}
+					});
+				}
+			});
+		}); 
+ 
+		function iniciarJuego(boton) {
+			const mesaDiv = boton.closest('.mesa');
+			const tableId = mesaDiv.getAttribute('data-mesa-id');
+            socket.emit('iniciar_partida', { table_id: tableId });
+		}
+	
+		socket.on('partida_iniciada', (data) => {
+			console.log("Partida iniciada:", data);
+			//alert("Se va a llamar a /mesa_juego/" + data.mesa_id);
+			window.location.href = `/mesa_juego/${data.mesa_id}`;
+		});		
+		
+
+		socket.on('redirigir_a_juego', (data) => {
+			const { mesa_id, jugador } = data;
+			console.log(`Jugador ${jugador.username} entrando a ${mesa_id} con avatar ${jugador.avatar}`);
+			//alert(`Jugador ${jugador.username} entrando a ${mesa_id} con avatar ${jugador.avatar}`);
+			// Aquí rediriges al HTML de la mesa de juego con esta información
+			window.location.href = `/mesa_juego?mesa_id=${mesa_id}&username=${jugador.username}&avatar=${encodeURIComponent(jugador.avatar)}`;
+		}); 
+
+		// Detectar la tecla Enter en el campo de texto del chat
+		document.getElementById('chat-message').addEventListener('keypress', function (event) {
+			if (event.key === 'Enter') { // Verifica si se pulsó la tecla Enter
+				event.preventDefault(); // Previene el comportamiento por defecto (nueva línea)
+				sendMessage(); // Llama a la función para enviar el mensaje
+			}
+		});
+	    function sendMessage() {
+           const message = document.getElementById('chat-message').value;
+           socket.emit('chat_message', { username: username, message: message });
+           document.getElementById('chat-message').value = ''; // Limpiar el campo
+        }
+		
+	</script>
+</body>
+</html>

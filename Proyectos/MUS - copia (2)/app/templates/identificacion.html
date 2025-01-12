@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Identificación de Usuario</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f8f9fa;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 400px;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            color: #374151;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .login-button {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            color: white;
+            background-color: #2563eb;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .login-button:hover {
+            background-color: #1d4ed8;
+        }
+
+        .forgot-password {
+            display: block;
+            margin-top: 15px;
+            font-size: 14px;
+            color: #2563eb;
+            text-decoration: none;
+        }
+
+        .forgot-password:hover {
+            text-decoration: underline;
+        }
+		
+		.register-container {
+			width: 50vw; /* 50% del ancho de la ventana */
+		}
+		.mensaje.error {
+			background-color: #f8d7da;
+			color: #721c24;
+			padding: 10px;
+			border-radius: 5px;
+			margin: 10px 0;
+			text-align: center;
+		}
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <h1>Iniciar Sesión</h1>
+        <div class="login-page-form-logo">
+             <img src="static/img/logomus.png" width="70" alt="logo" />
+        </div>
+        <h1> </h1>
+		<form method="post" action="/acceso" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="username">Nombre de usuario</label>
+                <input type="text" id="username" name="username" value="{{ usuario }}" required >
+            </div>
+
+            <div class="form-group">
+                <label for="password">Contraseña</label>
+                <input type="password" id="password" name="password" value="{{ password }}" required>
+            </div>
+         <!-- Mostrar mensaje de error si existe -->
+        {% if mensaje_error %}
+            <div class="mensaje error">{{ mensaje_error }}</div>
+        {% endif %}
+			<div class="mb-3 login-remember">
+                <label class="switch" for="RememberLogin">
+                    <input type="checkbox" data-val="true" data-val-required="The RememberLogin field is required." id="RememberLogin" name="RememberLogin" value="true">
+                    <span class="slider round"></span>
+                </label>
+                <strong class="display-text">Recordar acceso</strong>
+            </div>
+            <button type="submit" class="login-button">Iniciar Sesión</button>
+        </form>
+
+        <a href="#" class="forgot-password">¿Olvidaste tu contraseña?</a>
+    </div>
+
+</body>
+</html>
+
+      

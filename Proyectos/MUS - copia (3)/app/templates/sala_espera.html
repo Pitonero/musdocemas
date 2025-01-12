@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sala de Espera - Musdocemas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <div id="username" data-username="{{ usuario }}" style="display: none;"></div>	
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <header class="header">
+        <h1>Musdocemas - Sala de Espera - Bienvenido {{ usuario }}</h1>
+        <nav>
+            <a href="perfil.html">Perfil</a>
+            <a href="estadisticas.html">Estadísticas</a>
+            <a href="reglas.html">Reglas</a>
+            <a href="logout.html">Cerrar Sesión</a>
+            <button class="crear-mesa-btn" onclick="crearMesa()"><i class="fas fa-plus"></i> Crear Nueva Mesa</button>
+        </nav>
+    </header>
+
+    <main class="sala-espera">
+        <section class="mesas-container" id="mesasContainer"></section>
+        <aside class="chat">
+            <h3>Chat de la Sala</h3>
+            <div class="mensajes" id="chat-box">
+            </div>				  
+            <input type="text" placeholder="Escribe un mensaje..." class="input-chat" id="chat-message">
+            <button class="enviar-btn" onclick="enviarMensaje()">Enviar</button>
+            <div class="jugadores-conectados">
+                <h3>Jugadores Conectados</h3>
+					<ul id="player-list"></ul>
+            </div>
+        </aside>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            //const username = document.getElementById("username").dataset.username;
+			const username = document.getElementById('username').getAttribute('data-username');
+            // Enviar evento de unión al servidor
+            const socket = io.connect();
+            socket.emit('join', { username: username });
+
+            // Escuchar el evento 'update_players' para actualizar la lista de usuarios
+            socket.on('update_players', function(players) {
+                const playerList = document.getElementById('player-list');
+                playerList.innerHTML = '';  // Limpiar la lista actual de jugadores
+
+                // Añadir cada usuario conectado a la lista
+                players.forEach(player => {
+                    const li = document.createElement('li');
+                    li.textContent = player;
+                    playerList.appendChild(li);
+                });
+            });
+			// Actualiza la lista de mesas
+			socket.on('update_tables', function(tables) {
+				const tableList = document.getElementById('table-list');
+				tableList.innerHTML = '';
+				tables.forEach(table => {
+					const li = document.createElement('li');
+					li.innerText = table;
+					li.onclick = () => joinTable(table);
+					tableList.appendChild(li);
+					alert("Mesas ", table);
+				});
+			});
+            // Escuchar el evento 'chat_message' para mostrar los mensajes en el chat
+            socket.on('chat_message', function(data) {
+                const chatBox = document.getElementById('chat-box');
+                const messageElement = document.createElement('p');
+                messageElement.textContent = `${data.username}: ${data.message}`;
+                chatBox.appendChild(messageElement);
+                chatBox.scrollTop = chatBox.scrollHeight; // Desplaza el chat hacia abajo
+            });
+			/*socket.on('chat_message', function(data) {
+				//alert('Entra en enviar mensaje de chat');
+				alert('Entra en scrip.js con username: ' + username);
+				const chatBox = document.getElementById('chat-box');
+				const message = document.createElement('p');
+				message.classList.add('message');
+				message.innerText = `${data.username}: ${data.message}`;
+				chatBox.appendChild(message);
+				// Desplazar el contenedor `chat-box` al final
+				chatBox.scrollTop = chatBox.scrollHeight;
+			});*/
+            // Función para enviar mensajes al servidor
+            window.sendMessage = function() {
+                const messageInput = document.getElementById('message-input');
+                const message = messageInput.value;
+                if (message) {
+                    socket.emit('chat_message', { username: username, message: message });
+                    messageInput.value = ''; // Limpiar el campo de entrada
+                }
+            };
+        });
+    </script>
+	<script>		
+        let mesaCount = 3;
+
+        function inicializarMesas() {
+            const mesasContainer = document.getElementById("mesasContainer");
+
+            // Mesa 1 - En juego
+            const mesa1 = crearMesaHTML("Mesa 1", "En juego", [
+                "../static/img/avatar1.png",
+                "../static/img/avatar2.png",
+                "../static/img/avatar3.png",
+                "../static/img/avatar4.png"
+            ]);
+            mesasContainer.appendChild(mesa1);
+
+            // Mesa 2 - En juego
+            const mesa2 = crearMesaHTML("Mesa 2", "En juego", [
+                "../static/img/avatar2.png",
+                "../static/img/avatar3.png",
+                "../static/img/avatar4.png",
+                "../static/img/avatar1.png"
+            ]);
+            mesasContainer.appendChild(mesa2);
+        }
+
+        function crearMesaHTML(nombre, estado, avatares) {
+            const nuevaMesa = document.createElement("div");
+            nuevaMesa.className = "mesa";
+            nuevaMesa.innerHTML = `
+                <h3>${nombre} - ${estado}</h3>
+                <img src="../static/img/tapete_mus.png" alt="Tapete de Mus" class="tapete">
+                <div class="jugadores">
+                    <div class="jugador" style="background-image: url('${avatares[0]}');" onclick="toggleAsiento(this)"></div>
+                    <div class="jugador" style="background-image: url('${avatares[1]}');" onclick="toggleAsiento(this)"></div>
+                    <div class="separador"></div>												 
+                    <div class="jugador" style="background-image: url('${avatares[2]}');" onclick="toggleAsiento(this)"></div>
+                    <div class="jugador" style="background-image: url('${avatares[3]}');" onclick="toggleAsiento(this)"></div>
+                </div>
+            `;
+            return nuevaMesa;
+        }
+
+        function crearMesa() {
+            const mesasContainer = document.getElementById("mesasContainer");
+            const nuevaMesa = crearMesaHTML(`Mesa ${mesaCount}`, "En Espera", [
+                "", "", "", ""
+            ]);		   
+            mesasContainer.appendChild(nuevaMesa);
+            mesaCount++;
+            mesasContainer.scrollTop = mesasContainer.scrollHeight;
+        }
+
+        function toggleAsiento(elemento) {
+            if (!elemento.classList.contains("occupied")) {
+                elemento.classList.add("occupied");
+                elemento.style.backgroundImage = "url('../static/img/avatar1.png')";
+            } else {
+                elemento.classList.remove("occupied");
+                elemento.style.backgroundImage = "";
+            }
+			verificarMesaCompleta(elemento.closest(".mesa"));												 
+        }
+		
+       function verificarMesaCompleta(mesa) {
+            const jugadores = mesa.querySelectorAll(".jugador.occupied");
+            if (jugadores.length === 4) {
+                setTimeout(() => {
+                    alert("Mesa completa. Redirigiendo al juego...");
+                    window.location.href = "mesa_juego.html"; // Redirige a la página de la partida
+                }, 500);
+		    }
+        } 
+															 
+		/*function sendMessage() {
+			
+            const inputChat = document.getElementById('inputChat');
+            const mensaje = inputChat.value;
+             alert('Entra en send;essage') 
+			if (mensaje) {
+			    alert('Continua en sendMessage') 
+                const chatBox = document.getElementById('chat-box');
+                const nuevoMensaje = document.createElement('div');
+                nuevoMensaje.classList.add('mensaje', 'self-message');
+                nuevoMensaje.textContent = `Tú: ${mensaje}`;
+                chatBox.appendChild(nuevoMensaje);
+                scrollToBottom(chatBox);
+                inputChat.value = '';
+            }
+        } */
+
+        function enviarMensaje() {
+			const username = document.getElementById('username').getAttribute('data-username');
+			//alert('En enviasrMensaje, el username que llega es :' + username );
+			const message = document.getElementById('chat-message').value;
+			alert('valor del mensaje' + message) 
+			socket.emit('chat_message', { username: username, message: message });
+			if (message) {
+				alert('Entra en el if mensaje') 
+				const chatBox = document.getElementById('chat-box');
+                const nuevoMensaje = document.createElement('div');
+                nuevoMensaje.classList.add('message', 'self-message');
+                nuevoMensaje.textContent = `${username}: ${message}`;
+                chatBox.appendChild(nuevoMensaje);
+                scrollToBottom(chatBox);
+                inputChat.value = '';
+            }
+        }  
+        function scrollToBottom(element) {
+            element.scrollTop = element.scrollHeight;
+        }
+
+        window.onload = inicializarMesas;
+	</script>
+</body>
+</html>

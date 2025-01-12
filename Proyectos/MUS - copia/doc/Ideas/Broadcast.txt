@@ -1,0 +1,198 @@
+En Python, cuando usas `emit` con `broadcast=True` en una aplicación que utiliza **Socket.IO**, 
+el mensaje se envía a **todos los clientes conectados** excepto al cliente que emitió el mensaje. 
+Esto es útil para actualizar a todos los usuarios sobre un evento sin que el emisor reciba su propio mensaje.
+
+Aquí tienes un ejemplo básico:
+
+```python
+from flask import Flask
+from flask_socketio import SocketIO, emit
+
+app = Flask(__name__)
+socketio = SocketIO(app)
+
+@socketio.on('my_event')
+def handle_my_event(data):
+    emit('my_response', data, broadcast=True)
+
+if __name__ == '__main__':
+    socketio.run(app)
+```
+
+En este ejemplo, cuando se recibe el evento `'my_event'`, se emite `'my_response'` a todos los clientes conectados excepto al que envió `'my_event'`.
+
+¿Te gustaría saber más sobre cómo funciona Socket.IO en Python?
+
+Para enviar un mensaje a un grupo específico de clientes en **Socket.IO**, puedes utilizar las **salas (rooms)**. 
+Las salas permiten agrupar clientes y enviar mensajes solo a esos grupos. Aquí tienes un ejemplo de cómo hacerlo:
+
+```python
+from flask import Flask
+from flask_socketio import SocketIO, join_room, leave_room, emit
+
+app = Flask(__name__)
+socketio = SocketIO(app)
+
+@socketio.on('join')
+def on_join(data):
+    username = data['username']
+    room = data['room']
+    join_room(room)
+    emit('message', f'{username} ha entrado en la sala {room}.', to=room)
+
+@socketio.on('leave')
+def on_leave(data):
+    username = data['username']
+    room = data['room']
+    leave_room(room)
+    emit('message', f'{username} ha salido de la sala {room}.', to=room)
+
+@socketio.on('my_event')
+def handle_my_event(data):
+    room = data['room']
+    emit('my_response', data, to=room)
+
+if __name__ == '__main__':
+    socketio.run(app)
+```
+
+En este ejemplo:
+
+1. Los clientes pueden unirse a una sala específica usando el evento `'join'`.
+2. Pueden salir de una sala usando el evento `'leave'`.
+3. Cuando se recibe el evento `'my_event'`, el mensaje se envía solo a los clientes en la sala especificada.
+
+Esto te permite controlar a qué grupo de clientes se envía cada mensaje. 
+
+Para listar las salas activas en una aplicación de **Socket.IO** en Python, puedes acceder al adaptador de 
+sockets y obtener las salas activas. Aquí tienes un ejemplo de cómo hacerlo:
+
+```python
+from flask import Flask
+from flask_socketio import SocketIO, emit
+
+app = Flask(__name__)
+socketio = SocketIO(app)
+
+@app.route('/rooms')
+def list_rooms():
+    rooms = socketio.server.manager.rooms
+    return {'rooms': list(rooms)}
+
+if __name__ == '__main__':
+    socketio.run(app)
+```
+
+En este ejemplo, la ruta `/rooms` devolverá una lista de todas las salas activas. La clave es acceder a 
+`socketio.server.manager.rooms`, que contiene las salas activas en el servidor¹
+(https://github.com/socketio/socket.io/issues/1884).
+
+
+En **Socket.IO**, las salas se eliminan automáticamente cuando no hay más clientes en ellas¹
+(https://github.com/socketio/socket.io/issues/3042). Sin embargo, si deseas eliminar una sala manualmente, 
+puedes hacer que todos los clientes abandonen la sala. Aquí tienes un ejemplo de cómo hacerlo:
+
+```python
+from flask import Flask
+from flask_socketio import SocketIO, emit
+
+app = Flask(__name__)
+socketio = SocketIO(app)
+
+@socketio.on('clear_room')
+def clear_room(data):
+    room = data['room']
+    clients = socketio.server.manager.rooms.get('/', {}).get(room, set())
+    for client in clients:
+        socketio.server.leave_room(client, room)
+    emit('message', f'La sala {room} ha sido eliminada.', to=room)
+
+if __name__ == '__main__':
+    socketio.run(app)
+```
+
+En este ejemplo, cuando se recibe el evento `'clear_room'`, se hace que todos los clientes abandonen la sala 
+especificada, lo que efectivamente elimina la sala.
+
+
+EJEMPLO DE LOGIN SOCKETIO:
+
+Para implementar la autenticación en **Socket.IO** utilizando JSON Web Tokens (JWT), puedes seguir estos pasos. 
+Este método asegura que solo los usuarios autenticados puedan establecer una conexión con el servidor.
+
+### Servidor
+
+1. **Generar un JWT en el servidor**: Crea el token en tu backend al momento de iniciar sesión o registrar un usuario.
+
+    ```python
+    import jwt
+    import datetime
+
+    def generate_token(user_id):
+        payload = {
+            'user_id': user_id,
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)
+        }
+        token = jwt.encode(payload, 'clave_secreta', algorithm='HS256')
+        return token
+    ```
+
+2. **Validar el token en el servidor**: Intercepta la conexión y valida el token.
+
+    ```python
+    from flask import Flask
+    from flask_socketio import SocketIO, emit
+    import jwt
+
+    app = Flask(__name__)
+    socketio = SocketIO(app)
+
+    @socketio.on('connect')
+    def connect():
+        token = request.args.get('token')
+        if not token:
+            return False  # Rechaza la conexión si no hay token
+
+        try:
+            payload = jwt.decode(token, 'clave_secreta', algorithms=['HS256'])
+            request.user_id = payload['user_id']
+        except jwt.ExpiredSignatureError:
+            return False  # Rechaza la conexión si el token ha expirado
+        except jwt.InvalidTokenError:
+            return False  # Rechaza la conexión si el token es inválido
+
+    @socketio.on('my_event')
+    def handle_my_event(data):
+        emit('my_response', {'data': 'Mensaje recibido'})
+
+    if __name__ == '__main__':
+        socketio.run(app)
+    ```
+
+### Cliente
+
+1. **Enviar el token desde el cliente**: Al conectar con el servidor de Socket.IO, envía el token como parte de los 
+datos de conexión.
+
+    ```javascript
+    const socket = io('http://localhost:5000', {
+        query: {
+            token: 'tu_token_jwt'
+        }
+    });
+
+    socket.on('connect', () => {
+        console.log('Conectado al servidor');
+        socket.emit('my_event', { data: 'Hola desde el cliente' });
+    });
+
+    socket.on('my_response', (data) => {
+        console.log(data);
+    });
+
+    socket.on('connect_error', (err) => {
+        console.error('Error de conexión:', err.message);
+    });
+    ```
+
+Este ejemplo muestra cómo generar y validar un JWT en el servidor y cómo enviar el token desde el cliente para autenticar la conexión.

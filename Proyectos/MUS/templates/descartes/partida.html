@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Partida en Tiempo Real - Mus Online</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .game-container {
+            display: flex;
+            max-width: 1200px;
+            width: 100%;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            gap: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #374151;
+            margin-bottom: 20px;
+        }
+
+        /* Columna izquierda para el tapete y elementos de juego */
+        .table-area {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .scoreboard {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background-color: #f1f5f9;
+            border-radius: 5px;
+        }
+
+        .scoreboard .team-score {
+            text-align: center;
+        }
+
+        .scoreboard h2 {
+            font-size: 18px;
+            color: #2563eb;
+        }
+
+        /* Tapete de juego */
+        .game-table {
+            position: relative;
+            width: 100%;
+            padding-top: 100%; /* Mantiene el aspecto cuadrado */
+            background-color: #b2d8b2; /* Verde claro similar a césped */
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .player-position {
+            position: absolute;
+            text-align: center;
+            width: 20%;
+        }
+
+        .top-player { top: 5%; left: 50%; transform: translateX(-50%); }
+        .bottom-player { bottom: 10%; left: 50%; transform: translateX(-50%); } /* Ajustado para colocar las cartas */
+        .left-player { top: 50%; left: 5%; transform: translateY(-50%); }
+        .right-player { top: 50%; right: 5%; transform: translateY(-50%); }
+
+        .player-position img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid #ffffff;
+            margin-bottom: 5px;
+        }
+
+        .player-position h4 {
+            color: #ffffff;
+            font-size: 14px;
+        }
+
+        /* Visualización de cartas del jugador en la posición inferior */
+        .cards-area {
+            position: absolute;
+            bottom: 15%; /* Ajustado para quedar sobre el avatar */
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+        }
+
+        .card {
+            width: 60px;
+            height: 100px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #333;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Área de apuestas y turno */
+        .betting-area, .turn-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .betting-area {
+            padding: 10px;
+            background-color: #f1f5f9;
+            border-radius: 5px;
+            justify-content: space-between;
+        }
+
+        .betting-area h3 {
+            font-size: 16px;
+            color: #374151;
+        }
+
+        .bet-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .bet-button {
+            padding: 8px 12px;
+            font-size: 14px;
+            color: white;
+            background-color: #2563eb;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .bet-button:hover {
+            background-color: #1d4ed8;
+        }
+
+        .turn-indicator {
+            font-weight: bold;
+            color: #2563eb;
+        }
+
+        /* Columna derecha para el chat y botones de señas */
+        .chat-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-container {
+            max-height: 400px;
+            overflow-y: auto;
+            background-color: #f9fafb;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+            flex: 1;
+        }
+
+        .chat-message {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .chat-message img {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .chat-message .username {
+            font-weight: bold;
+            color: #374151;
+        }
+
+        .chat-message .text {
+            margin-left: 5px;
+            color: #555;
+        }
+
+        /* Botones de chat */
+        .chat-input-container {
+            display: flex;
+            margin-top: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .send-button {
+            padding: 8px 12px;
+            margin-left: 10px;
+            font-size: 14px;
+            color: white;
+            background-color: #2563eb;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .send-button:hover {
+            background-color: #1d4ed8;
+        }
+
+        /* Botones de señas debajo del chat */
+        .señas-area {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .seña-button {
+            padding: 10px;
+            font-size: 14px;
+            color: white;
+            background-color: #16a34a;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .seña-button:hover {
+            background-color: #15803d;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+
+        <!-- Columna izquierda: Tapete y elementos de juego -->
+        <div class="table-area">
+            <!-- Marcador de Puntuación -->
+            <div class="scoreboard">
+                <div class="team-score">
+                    <h2>Equipo 1</h2>
+                    <p>Puntos: 20</p>
+                </div>
+                <h2>Objetivo: 40 Puntos</h2>
+                <div class="team-score">
+                    <h2>Equipo 2</h2>
+                    <p>Puntos: 15</p>
+                </div>
+            </div>
+
+            <!-- Tapete de juego con posiciones de los jugadores -->
+            <div class="game-table">
+                <!-- Jugadores en sus posiciones -->
+                <div class="player-position top-player">
+                    <img src="img/avatar1.png" alt="Avatar de jugador">
+                    <h4>Juan Pérez</h4>
+                </div>
+                <div class="player-position bottom-player">
+                    <img src="img/avatar2.png" alt="Avatar de jugador">
+                    <h4>María López</h4>
+                </div>
+                <div class="player-position left-player">
+                    <img src="img/avatar3.png" alt="Avatar de jugador">
+                    <h4>Carlos Ruiz</h4>
+                </div>
+                <div class="player-position right-player">
+                    <img src="img/avatar4.png" alt="Avatar de jugador">
+                    <h4>Lucía Fernández</h4>
+                </div>
+
+                <!-- Cartas de la jugadora en la parte inferior (María López) sobre su avatar -->
+                <div class="cards-area">
+                    <div class="card">7</div>
+                    <div class="card">3</div>
+                    <div class="card">C</div>
+                    <div class="card">S</div>
+                </div>
+            </div>
+
+            <!-- Área de Apuestas -->
+            <div class="betting-area">
+                <h3>Apuestas Actuales</h3>
+                <div class="bet-buttons">
+                    <button class="bet-button">Pasar</button>
+                    <button class="bet-button">Aceptar</button>
+                    <button class="bet-button">Subir</button>
+                </div>
+            </div>
+
+            <!-- Indicador de Turno -->
+            <div class="turn-indicator">
+                Turno de: Juan Pérez
+            </div>
+        </div>
+
+        <!-- Columna derecha: Chat y botones de señas -->
+        <div class="chat-column">
+            <div class="chat-container">
+                <div class="chat-message">
+                    <img src="img/avatar1.png" alt="Avatar de usuario">
+                    <span class="username">Juan:</span>
+                    <span class="text">¡Vamos a ganar esta!</span>
+                </div>
+                <div class="chat-message">
+                    <img src="img/avatar2.png" alt="Avatar de usuario">
+                    <span class="username">María:</span>
+                    <span class="text">Estoy lista para el lance.</span>
+                </div>
+                <!-- Más mensajes -->
+            </div>
+
+            <!-- Botones de chat debajo del área de mensajes -->
+            <div class="chat-input-container">
+                <input type="text" class="chat-input" placeholder="Escribe un mensaje...">
+                <button class="send-button">Enviar</button>
+            </div>
+
+            <!-- Botones de señas debajo del chat -->
+            <div class="señas-area">
+                <button class="seña-button">Guiñar</button>
+                <button class="seña-button">Mostrar Lengua</button>
+                <button class="seña-button">Elevar Cejas</button>
+                <button class="seña-button">Mover Labios</button>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>

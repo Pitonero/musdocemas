@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutorial Interactivo de MUS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            background-color: #374151;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            width: 100%;
+        }
+
+        .tutorial {
+            max-width: 800px;
+            margin: 20px;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .step {
+            display: none;
+        }
+
+        .step.active {
+            display: block;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            color: white;
+            background-color: #2563eb;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .btn[disabled] {
+            background-color: #a0aec0;
+            cursor: not-allowed;
+        }
+
+        .btn:hover:not([disabled]) {
+            background-color: #1d4ed8;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Tutorial Interactivo de MUS</h1>
+    <p>Aprende los pasos básicos para jugar al MUS de manera sencilla e interactiva.</p>
+</header>
+
+<div class="tutorial">
+    <!-- Paso 1: Introducción -->
+    <div class="step active">
+        <h2>Paso 1: Objetivo del Juego</h2>
+        <p>El objetivo del MUS es ganar puntos en distintas fases del juego, conocidas como lances, en equipos de dos.</p>
+    </div>
+
+    <!-- Paso 2: Reparto de Cartas -->
+    <div class="step">
+        <h2>Paso 2: Reparto de Cartas</h2>
+        <p>Cada jugador recibe cuatro cartas y puede hacer señas a su compañero para indicar la calidad de su mano.</p>
+    </div>
+
+    <!-- Paso 3: Fases del Juego -->
+    <div class="step">
+        <h2>Paso 3: Fases del Juego</h2>
+        <p>En cada ronda hay cuatro lances: <strong>Grande</strong>, <strong>Chica</strong>, <strong>Pares</strong>, y <strong>Juego y Punto</strong>.</p>
+    </div>
+
+    <!-- Paso 4: Señales -->
+    <div class="step">
+        <h2>Paso 4: Señales</h2>
+        <p>Las señas entre compañeros permiten comunicar la calidad de la mano sin que los rivales se den cuenta. Algunas señas típicas son:</p>
+        <ul>
+            <li>Guiñar un ojo: Tengo pares.</li>
+            <li>Mostrar la lengua: Tengo juego.</li>
+            <li>Elevar las cejas: Tengo tres cartas iguales.</li>
+            <li>Mover los labios: Tengo dúplex.</li>
+        </ul>
+    </div>
+
+    <!-- Paso 5: Puntuación -->
+    <div class="step">
+        <h2>Paso 5: Puntuación</h2>
+        <p>El equipo que llega primero a la cantidad de puntos pactados, generalmente 40, gana la partida.</p>
+    </div>
+
+    <!-- Botones de navegación -->
+    <div class="button-container">
+        <button class="btn" id="prevButton" onclick="prevStep()" disabled>Anterior</button>
+        <button class="btn" id="nextButton" onclick="nextStep()">Siguiente</button>
+    </div>
+</div>
+
+<script>
+    let currentStep = 0;
+    const steps = document.querySelectorAll('.step');
+    const prevButton = document.getElementById('prevButton');
+    const nextButton = document.getElementById('nextButton');
+
+    function showStep(index) {
+        steps.forEach((step, i) => {
+            step.classList.toggle('active', i === index);
+        });
+        prevButton.disabled = index === 0;
+        nextButton.disabled = index === steps.length - 1;
+        currentStep = index;
+    }
+
+    function nextStep() {
+        if (currentStep < steps.length - 1) {
+            showStep(currentStep + 1);
+        }
+    }
+
+    function prevStep() {
+        if (currentStep > 0) {
+            showStep(currentStep - 1);
+        }
+    }
+</script>
+
+</body>
+</html>

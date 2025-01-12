@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seleccionar Avatar</title>
+    <style>
+        .avatar-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .avatar-item {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid #ddd;
+        }
+
+        .avatar-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .avatar-item:hover {
+            border-color: #4b8b3b;
+        }
+    </style>
+</head>
+<body>
+    <h1>Selecciona tu Avatar</h1>
+    <div class="avatar-grid">
+        {% for avatar in avatares %}
+        <div class="avatar-item">
+            <img src="{{ url_for('static', filename=avatar) }}" alt="Avatar">
+        </div>
+        {% endfor %}
+    </div>
+</body>
+</html>

@@ -1,0 +1,106 @@
+Para lanzar un proceso síncrono en Python, puedes usar el módulo `subprocess`. Aquí tienes un ejemplo básico de cómo hacerlo:
+
+```python
+import subprocess
+
+# Ejecutar un comando de forma síncrona
+result = subprocess.run(['ls', '-l'], capture_output=True, text=True)
+
+# Imprimir la salida del comando
+print(result.stdout)
+```
+
+En este ejemplo, el comando `ls -l` se ejecuta de forma síncrona, y el programa espera a que termine antes de continuar. 
+La salida del comando se captura y se imprime.
+
+
+Para asegurarte de que el flujo de tu programa espere a que una función termine de ejecutarse antes de continuar. 
+Puedes usar la palabra clave `await` en una función asíncrona. Aquí tienes un ejemplo usando `asyncio`:
+
+```python
+import asyncio
+
+async def mi_funcion():
+    print("Ejecutando mi_funcion...")
+    await asyncio.sleep(2)  # Simula una tarea que toma tiempo
+    print("mi_funcion completada")
+
+async def main():
+    print("Llamando a mi_funcion")
+    await mi_funcion()  # Espera a que mi_funcion termine
+    print("Continuando con el flujo del programa")
+
+# Ejecutar la función principal
+asyncio.run(main())
+```
+
+En este ejemplo, `mi_funcion` es una función asíncrona que simula una tarea que toma tiempo usando `await asyncio.sleep(2)`. 
+La función `main` llama a `mi_funcion` y espera a que termine antes de continuar¹(https://docs.python.org/es/3/library/asyncio-task.html).
+
+
+from datetime import datetime
+
+# Obtener la hora actual
+hora_actual = datetime.now().time()
+
+# Imprimir la hora actual
+print("La hora actual es:", hora_actual)
+
+
+Pasos siguientes:
+	- Flujo:
+		- Pruebas línea paso.
+		- Pruebas apos.
+		- Pruebas veo.
+		- Pruebas ord.
+		- Con j, entra por punto.
+	- Ocultar Veo cuando no procede.
+	- Llevar en tiempo real los porquenos.
+	- Contabilizar puntuación y con cualquier suma preguntar si supera 40.
+	- Revisar tema broadcast y rooms.
+	- Asegurarse de que cada mesa es independiente.
+	- Cerrar el registro con la clave de activación.
+	- Incluir puntuación por usuario.
+
+
+
+Para enviar un mensaje a un grupo específico de clientes en **Socket.IO**, puedes utilizar las **salas (rooms)**. 
+Las salas permiten agrupar clientes y enviar mensajes solo a esos grupos. Aquí tienes un ejemplo de cómo hacerlo:
+
+```python
+from flask import Flask
+from flask_socketio import SocketIO, join_room, leave_room, emit
+
+app = Flask(__name__)
+socketio = SocketIO(app)
+
+@socketio.on('join')
+def on_join(data):
+    username = data['username']
+    room = data['room']
+    join_room(room)
+    emit('message', f'{username} ha entrado en la sala {room}.', to=room)
+
+@socketio.on('leave')
+def on_leave(data):
+    username = data['username']
+    room = data['room']
+    leave_room(room)
+    emit('message', f'{username} ha salido de la sala {room}.', to=room)
+
+@socketio.on('my_event')
+def handle_my_event(data):
+    room = data['room']
+    emit('my_response', data, to=room)
+
+if __name__ == '__main__':
+    socketio.run(app)
+```
+
+En este ejemplo:
+
+1. Los clientes pueden unirse a una sala específica usando el evento `'join'`.
+2. Pueden salir de una sala usando el evento `'leave'`.
+3. Cuando se recibe el evento `'my_event'`, el mensaje se envía solo a los clientes en la sala especificada.
+
+Esto te permite controlar a qué grupo de clientes se envía cada mensaje. ¿Hay algo más que te gustaría saber sobre Socket.IO o Python?

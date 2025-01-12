@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mesas de Mus</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .header {
+            background-color: #343a40;
+            color: white;
+            padding: 10px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .mesa {
+            margin: 20px;
+            width: 300px;
+            height: 300px;
+            position: relative;
+            background-color: #4b8b3b;
+            border-radius: 10px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .jugador {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: #ddd;
+            border: 2px solid white;
+            position: absolute;
+            background-size: cover;
+            background-position: center;
+            cursor: pointer;
+        }
+
+        .jugador:nth-child(1) {
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .jugador:nth-child(2) {
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .jugador:nth-child(3) {
+            top: 50%;
+            left: 10px;
+            transform: translateY(-50%);
+        }
+
+        .jugador:nth-child(4) {
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+        }
+
+        .nombre-jugador {
+            position: absolute;
+            font-size: 14px;
+            color: white;
+            font-weight: bold;
+        }
+
+        .nombre-jugador:nth-child(5) {
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .nombre-jugador:nth-child(6) {
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .nombre-jugador:nth-child(7) {
+            left: -80px;
+            top: 50%;
+            transform: translateY(-50%) rotate(-90deg);
+        }
+
+        .nombre-jugador:nth-child(8) {
+            right: -80px;
+            top: 50%;
+            transform: translateY(-50%) rotate(90deg);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Mesas de Mus</h1>
+    </div>
+
+    <div class="mesa" id="mesa_1">
+        <div class="jugador" onclick="toggleAsiento(this, 'mesa_1', 0)"></div>
+        <div class="nombre-jugador">Jugador 1</div>
+        <div class="jugador" onclick="toggleAsiento(this, 'mesa_1', 1)"></div>
+        <div class="nombre-jugador">Jugador 2</div>
+        <div class="jugador" onclick="toggleAsiento(this, 'mesa_1', 2)"></div>
+        <div class="nombre-jugador">Jugador 3</div>
+        <div class="jugador" onclick="toggleAsiento(this, 'mesa_1', 3)"></div>
+        <div class="nombre-jugador">Jugador 4</div>
+    </div>
+
+    <script>
+        const socket = io.connect();
+        const usuario = "UsuarioDemo"; // Reemplazar con datos reales
+
+        function toggleAsiento(elemento, mesaId, asientoIndex) {
+            if (!elemento.classList.contains('ocupado')) {
+                elemento.classList.add('ocupado');
+                socket.emit('entrar_asiento', { username: usuario, mesa_id: mesaId, asiento: asientoIndex });
+            } else {
+                elemento.classList.remove('ocupado');
+                socket.emit('salir_asiento', { username: usuario, mesa_id: mesaId, asiento: asientoIndex });
+            }
+        }
+
+        socket.on('actualizar_mesas', (mesas) => {
+            const mesa = mesas["mesa_1"];
+            const asientos = document.querySelectorAll(".jugador");
+            mesa.forEach((jugador, index) => {
+                const asiento = asientos[index];
+                if (jugador) {
+                    asiento.style.backgroundImage = "url('../static/img/avatar.png')";
+                } else {
+                    asiento.style.backgroundImage = "";
+                }
+            });
+        });
+    </script>
+</body>
+</html>

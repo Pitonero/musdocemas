@@ -1,0 +1,201 @@
+/*mazo.style.top = `${jugadorInicialRect.top + window.scrollY + 40}px`;
+mazo.style.left = `${jugadorInicialRect.left + window.scrollX + 25}px`;
+
+Cómo Usarlo:
+Cambia el índice en repartirCartas(0) para seleccionar quién reparte:
+0: Jugador 1 reparte.
+1: Jugador 2 reparte.
+2: Jugador 3 reparte.
+3: Jugador 4 reparte.
+Para aumentar la velicidad de reparto disminuir el valor de 300 en el código
+setTimeout(moverCarta, 300); 
+*/
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reparto Antihorario con Sonido</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #212121;
+      color: white;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      flex-direction: column;
+    }
+
+    .mesa {
+      position: relative;
+      width: 80vw;
+      height: 50vh;
+      background-color: #2e7d32;
+      border-radius: 15px;
+      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.3);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .mazo {
+      position: absolute;
+      width: 50px;
+      height: 70px;
+      background-image: url('../static/img/cartas/reversoazul3.png'); /* Imagen del reverso como fondo */
+      background-size: cover;
+      border-radius: 5px;
+      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    .jugador {
+      position: absolute;
+      width: 100px;
+      height: 150px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border: 2px dashed #ffffff;
+      border-radius: 5px;
+    }
+
+    #jugador1 {
+      top: 2%;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    #jugador2 {
+      right: 5%;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    #jugador3 {
+      bottom: -5%;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    #jugador4 {
+      left: 5%;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .carta {
+      position: absolute;
+      width: 50px;
+      height: 70px;
+      background-image: url('../static/img/cartas/reversoazul3.png'); /* Reverso de la carta */
+      background-size: cover;
+      border-radius: 5px;
+      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.3);
+      transition: all 0.3s ease-in-out; /* Más rápida */
+      opacity: 0; /* Oculta las cartas inicialmente */
+    }
+
+    .btn-repartir {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #ff5722;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .btn-repartir:hover {
+      background-color: #e64a19;
+    }
+  </style>
+</head>
+<body>
+  <div class="mesa">
+    <div id="mazo" class="mazo"></div>
+    <div class="jugador" id="jugador1"></div>
+    <div class="jugador" id="jugador2"></div>
+    <div class="jugador" id="jugador3"></div>
+    <div class="jugador" id="jugador4"></div>
+  </div>
+  <button class="btn-repartir" id="btnRepartir">Repartir</button>
+
+  <script>
+    function repartirCartas(jugadorReparte = 0) {
+      const mazo = document.getElementById('mazo');
+      const jugadores = [
+        document.getElementById('jugador1'),
+        document.getElementById('jugador2'),
+        document.getElementById('jugador3'),
+        document.getElementById('jugador4'),
+      ];
+
+      // Efecto de sonido
+     //const sonidoReparto = new Audio('card_slide.mp3'); // Cambia por el nombre de tu archivo de sonido
+
+      // Calcular el jugador inicial del reparto (el jugador a la derecha del repartidor)
+      const jugadorInicial = (jugadorReparte + 1) % jugadores.length;
+
+      // Colocar el mazo en la posición del jugador que reparte
+      const jugadorReparteRect = jugadores[jugadorReparte].getBoundingClientRect();
+      mazo.style.top = `${jugadorReparteRect.top + window.scrollY + 40}px`;
+      mazo.style.left = `${jugadorReparteRect.left + window.scrollX + 25}px`;
+
+      let cartaIndex = 0;
+
+      // Crear y animar las cartas
+function moverCarta() {
+  if (cartaIndex >= jugadores.length * 4) return; // 4 cartas por jugador
+
+  // Calcular el índice del jugador en sentido antihorario
+  const jugador = jugadores[
+    (jugadorInicial + jugadores.length - cartaIndex % jugadores.length) % jugadores.length
+  ];
+
+  const carta = document.createElement('div');
+  carta.classList.add('carta');
+
+  // Posición inicial: en el mazo
+  const mazoRect = mazo.getBoundingClientRect();
+  carta.style.top = `${mazoRect.top + window.scrollY}px`;
+  carta.style.left = `${mazoRect.left + window.scrollX}px`;
+  carta.style.opacity = 1;
+
+  document.body.appendChild(carta);
+
+  // Reproducir sonido ANTES de mover la carta
+  //sonidoReparto.currentTime = 0; // Reinicia el sonido
+  //sonidoReparto.play();
+
+  // Posición final: en el jugador
+  const jugadorRect = jugador.getBoundingClientRect();
+  setTimeout(() => {
+    carta.style.top = `${jugadorRect.top + window.scrollY + Math.random() * 10}px`;
+    carta.style.left = `${jugadorRect.left + window.scrollX + Math.random() * 10}px`;
+    carta.style.transform = 'rotate(' + (Math.random() * 20 - 10) + 'deg)';
+  }, 100);
+
+  cartaIndex++;
+  setTimeout(moverCarta, 300); // Más rápido: siguiente carta después de 300ms
+}
+
+      moverCarta();
+    }
+
+    // Escuchar clic en el botón de repartir
+    const btnRepartir = document.getElementById('btnRepartir');
+    btnRepartir.addEventListener('click', () => {
+      repartirCartas(0); // Jugador 1 reparte
+      btnRepartir.disabled = true; // Deshabilita el botón después de repartir
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sala de Espera - Mus Online</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .waiting-room-container {
+            display: flex;
+            max-width: 1200px;
+            width: 100%;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+
+        /* Columna izquierda para el tapete y la información de la mesa */
+        .table-area {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-right: 20px;
+        }
+
+        .table-info {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 10px;
+        }
+
+        .table-info h2 {
+            font-size: 20px;
+            color: #2563eb;
+            margin-bottom: 5px;
+        }
+
+        .table-info p {
+            font-size: 14px;
+            color: #555;
+        }
+
+        /* Tapete de juego */
+        .game-table {
+            position: relative;
+            width: 100%;
+            padding-top: 100%; /* Cuadrado */
+            background-color: #0f5132;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .player-position {
+            position: absolute;
+            text-align: center;
+            width: 20%;
+        }
+
+        .top-player { top: 5%; left: 50%; transform: translateX(-50%); }
+        .bottom-player { bottom: 5%; left: 50%; transform: translateX(-50%); }
+        .left-player { top: 50%; left: 5%; transform: translateY(-50%); }
+        .right-player { top: 50%; right: 5%; transform: translateY(-50%); }
+
+        .player-position img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid #ffffff;
+            margin-bottom: 5px;
+        }
+
+        .player-position h4 {
+            color: #ffffff;
+            font-size: 14px;
+        }
+
+        /* Columna derecha para el chat */
+        .chat-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-container {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9fafb;
+            padding: 10px;
+            flex: 1;
+            overflow-y: auto;
+            max-height: 300px;
+            margin-bottom: 10px;
+        }
+
+        .chat-message {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .chat-message img {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .chat-message .username {
+            font-weight: bold;
+            color: #374151;
+        }
+
+        .chat-message .text {
+            margin-left: 5px;
+            color: #555;
+        }
+
+        .chat-input-container {
+            display: flex;
+            margin-top: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .send-button {
+            padding: 8px 12px;
+            margin-left: 10px;
+            font-size: 14px;
+            color: white;
+            background-color: #2563eb;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .send-button:hover {
+            background-color: #1d4ed8;
+        }
+
+        /* Botón de Inicio de Partida */
+        .start-game-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .start-game-button {
+            padding: 12px 20px;
+            font-size: 16px;
+            color: white;
+            background-color: #16a34a;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .start-game-button:hover {
+            background-color: #15803d;
+        }
+
+        .start-game-button[disabled] {
+            background-color: #a0aec0;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="waiting-room-container">
+
+        <!-- Columna izquierda: información de la mesa y tapete -->
+        <div class="table-area">
+            <div class="table-info">
+                <h2>Información de la Mesa</h2>
+                <p><strong>Nombre de la mesa:</strong> Museros Pro</p>
+                <p><strong>Creador:</strong> Juan Pérez</p>
+                <p><strong>Privacidad:</strong> Privada (con contraseña)</p>
+                <p><strong>Reglas de la partida:</strong> Partida de 40 puntos, con señas permitidas.</p>
+            </div>
+
+            <!-- Tapete de juego con posiciones de los jugadores -->
+            <div class="game-table">
+                <div class="player-position top-player">
+                    <img src="img/avatar1.png" alt="Avatar de jugador">
+                    <h4>Juan Pérez</h4>
+                </div>
+                <div class="player-position bottom-player">
+                    <img src="img/avatar2.png" alt="Avatar de jugador">
+                    <h4>María López</h4>
+                </div>
+                <div class="player-position left-player">
+                    <img src="img/avatar3.png" alt="Avatar de jugador">
+                    <h4>Carlos Ruiz</h4>
+                </div>
+                <div class="player-position right-player">
+                    <img src="img/avatar4.png" alt="Avatar de jugador">
+                    <h4>Lucía Fernández</h4>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna derecha: chat -->
+        <div class="chat-column">
+            <div class="chat-container">
+                <div class="chat-message">
+                    <img src="img/avatar1.png" alt="Avatar de usuario">
+                    <span class="username">Juan:</span>
+                    <span class="text">¡Hola! Listo para jugar.</span>
+                </div>
+                <div class="chat-message">
+                    <img src="img/avatar2.png" alt="Avatar de usuario">
+                    <span class="username">María:</span>
+                    <span class="text">¡Vamos a ganar!</span>
+                </div>
+                <!-- Más mensajes -->
+            </div>
+
+            <div class="chat-input-container">
+                <input type="text" class="chat-input" placeholder="Escribe un mensaje...">
+                <button class="send-button">Enviar</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Botón de Inicio de Partida -->
+    <div class="start-game-container">
+        <button class="start-game-button" disabled>Iniciar Partida</button>
+    </div>
+
+</body>
+</html>
+

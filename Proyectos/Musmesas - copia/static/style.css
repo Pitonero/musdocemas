@@ -1,0 +1,50 @@
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+}
+
+.chat, .table-management {
+    margin: 20px auto;
+    width: 300px;
+    border: 1px solid #ddd;
+    padding: 15px;
+}
+
+#chat-box {
+    height: 200px;
+    border: 1px solid #ccc;
+    overflow-y: scroll;
+    margin-bottom: 10px;
+}
+
+#player-list, #table-list {
+    list-style-type: none;
+    padding: 0;
+}
+
+input, button {
+    padding: 8px;
+    margin: 5px;
+    font-size: 16px;
+}
+
+button {
+    cursor: pointer;
+}
+
+    #messages {
+        width: 100%;
+        text-align: left;
+        padding: 10px;
+        border: 1px solid #ccc;
+        max-height: 400px; /* Esto es opcional, para limitar la altura */
+        overflow-y: auto;  /* Para que tenga scroll cuando haya muchos mensajes */
+    }
+
+    .message {
+        text-align: left;  /* Asegura que cada mensaje esté alineado a la izquierda */
+        margin: 5px 0;
+        padding: 5px;
+        background-color: #f0f0f0;  /* Opcional, color de fondo para cada mensaje */
+        border-radius: 5px;
+    }	

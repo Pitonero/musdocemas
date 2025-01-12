@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mus Doce Más - Juega Mus en Línea</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: #343a40;
+            color: white;
+        }
+
+        .logo img {
+            height: auto;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+        }
+
+        .icon {
+            cursor: pointer;
+            margin: 0 10px;
+            width: 40px;
+            height: 40px;
+            display: inline-block;
+        }
+
+        .icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .icon:hover img {
+            filter: brightness(1.2);
+        }
+
+        .right-section {
+            display: flex;
+            align-items: center;
+        }
+
+        .user-info img {
+            margin-right: 10px;
+        }
+		/* Reseteo de márgenes y padding */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+/* Estilos del cuerpo */
+body {
+    background-color: #f4f4f9;
+    color: #333;
+    line-height: 1.6;
+}
+
+/* Estilos del encabezado */
+header {
+    background-color: #333;
+    color: #fff;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+header .logo h1 {
+    font-size: 1.5rem;
+}
+
+nav ul {
+    list-style-type: none;
+    display: flex;
+    gap: 1rem;
+}
+
+nav ul li a {
+    color: #fff;
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    transition: background-color 0.3s ease;
+}
+
+nav ul li a:hover,
+nav ul li .register-btn {
+    background-color: #f4a261;
+    border-radius: 5px;
+}
+
+/* Sección principal de bienvenida */
+main {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.intro {
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    padding: 2rem;
+    border-radius: 10px;
+    margin-bottom: 2rem;
+}
+
+.intro h2 {
+    font-size: 2rem;
+}
+
+.intro p {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+}
+
+.intro .cta-button {
+    background-color: #f4a261;
+    color: #fff;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.3s ease;
+}
+
+.intro .cta-button:hover {
+    background-color: #e76f51;
+}
+
+/* Secciones secundarias */
+.section {
+    background-color: #fff;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.section h3 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: #333;
+}
+
+.section p {
+    margin-bottom: 1rem;
+}
+
+.section .secondary-button {
+    background-color: #333;
+    color: #fff;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    text-decoration: none;
+    transition: background-color 0.3s ease;
+}
+
+.section .secondary-button:hover {
+    background-color: #f4a261;
+}
+
+/* Pie de página */
+footer {
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    padding: 1rem;
+    margin-top: 2rem;
+}
+
+.footer-nav a {
+    color: #fff;
+    text-decoration: none;
+    margin: 0 0.5rem;
+    font-size: 0.9rem;
+}
+
+.footer-nav a:hover {
+    color: #f4a261;
+}
+
+.rules, .scoring {
+    background-color: #ffffff;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+    </style>	
+</head>
+<body>
+    <!-- Encabezado con logo e ítems de navegación -->
+    <header>
+		<div style="display: flex; align-items: center;">
+			<img src="../static/img/logomus.webp" alt="Logo de Mus 12 Más" onclick="window.location.href='/'" style="width: 50px; margin-right: 10px;">
+			<h1 style="margin: 0;">Mus Doce Más</h1>
+		</div>
+		<div class="user-info">
+		     <h1> </h1>
+        </div>
+		<nav>
+			<div class="right-section">
+				<div class="user-info">
+					<img src="../static/img/avatar.png" alt="Avatar" style="width: 35px; border-radius: 50%; vertical-align: middle;">
+					<span style="margin-left: 10px;" data-name="txtAlias">{{ usuario }}</span>
+				</div>
+				<div class="icon" title="Contactar" onclick="location.href='{{ url_for('contactar') }}'">
+					<img src="../static/img/iconos/contactar.png" alt="Contactar">
+				</div>
+				<div class="icon" title="Actualizar perfil" onclick="location.href='{{ url_for('perfilusuario') }}'">
+					<img src="../static/img/iconos/perfil.png" alt="Actualizar perfil">
+				</div>
+				<div class="icon" title="Cerrar sesión" onclick="cerrarSesion()">
+					<img src="../static/img/iconos/cerrarsesion.png" alt="Cerrar sesión">
+				</div>
+			</div>
+		</nav>
+
+    </header>
+    <!-- Sección principal con bienvenida e introducción -->
+    <main>
+        <section class="intro">
+            <h2>¡Bienvenido {{ nombre }}!</h2> 
+            <p>Únete a la comunidad de jugadores de Mus. Juega con amigos o compite contra jugadores de todo el mundo.</p>
+            <a href="{{url_for('lobby')}}" class="cta-button">Entrar a la sala de espera</a>
+        </section>
+
+        <!-- Sección de reglas y tutorial -->
+        <section id="perfil" class="section">
+            <h3>Actualiza tu perfil</h3>
+            <p>Podrás cambiar tus datos identificativos y seleccionar el avatar que más se identidique contigo.</p>
+            <a href="{{url_for('perfilusuario')}}" class="secondary-button">Actualizar perfil</a>
+        </section>
+
+        <!-- Sección de reglas y tutorial -->
+        <section id="reglas" class="section">
+            <h3>Reglas del Mus</h3>
+            <p>El Mus es un juego de cartas tradicional que se juega en parejas. Aprende las reglas básicas y empieza a competir.</p>
+            <a href="{{url_for('reglas')}}" class="secondary-button">Ver reglas</a>
+        </section>
+
+        <section id="tutorial" class="section">
+            <h3>Tutorial Interactivo</h3>
+            <p>¿Nuevo en el Mus? Explora nuestro tutorial interactivo y conoce todas las estrategias y señas.</p>
+            <a href="{{url_for('tutorial')}}" class="secondary-button">Ver tutorial</a>
+        </section>
+
+        <!-- Ranking de jugadores -->
+        <section id="ranking" class="section">
+            <h3>Clasificación Global</h3>
+            <p>Descubre quiénes son los mejores jugadores y compite para alcanzar el primer lugar en el ranking.</p>
+            <a href="{{url_for('ranking')}}" class="secondary-button">Ver clasificación</a>
+        </section>
+    </main>
+	<script>
+		const socket = io.connect(); // Conexión al servidor
+
+		function contactar() {
+			const username = document.querySelector('[data-name="txtAlias"]').textContent;
+			socket.emit('contactar', { username });
+			alert('Evento de enviar email lanzado para ' + username);
+		}
+
+		function cerrarSesion() {
+			// Redirige al usuario a la ruta del backend que cierra sesión
+			window.location.href = "/logout";
+		}
+	</script>
+    <!-- Pie de página con enlaces adicionales -->
+    <footer>
+        <p>&copy; 2024 Pablo Nieto. Todos los derechos reservados.</p>
+        <nav class="footer-nav">
+            <a href="#contacto">Contacto</a> |
+            <a href="#privacidad">Política de Privacidad</a> |
+            <a href="#terminos">Términos de Servicio</a>
+        </nav>
+    </footer>
+	
+
+</body>
+</html>

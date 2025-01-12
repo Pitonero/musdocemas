@@ -1,0 +1,44 @@
+    {% include 'header.html' %}
+    <br/>
+    <a href="{{url_for('create')}}" class="btn btn-success">
+
+        Incluir nuevo empleado
+
+    </a>
+    <br>
+    <br>
+    <table class="table table-light">
+        <thead class="thead-light">
+            <tr>
+                <th>#</th>
+                <th>Foto</th>
+                <th>Nombre</th>
+                <th>Correo</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for empleado in empleados %}
+            <tr>
+                <td>{{empleado[0] }}</td>
+
+                <td>
+                  <!--  <img class="<img class="img-thumbnail" width="100" src="uploads/{{empleado[3] }}" alt="">-->
+                    <img class="<img class="img-thumbnail" width="100" src="uploads/{{empleado[3] }}" alt="">
+                     {{empleado[3] }}
+                </td>
+
+                <td>{{empleado[1] }}</td>
+                <td>{{empleado[2] }}</td>
+                <td> 
+                    <a class="btn btn-warning" href="/edit/{{empleado[0] }}">Editar</a> | 
+                    <a onclick="return confirm('¿desea borrar el registro?')" class="btn btn-danger" href="/destroy/{{empleado[0] }},{{empleado[3] }}">Eliminar</a> 
+                </td>
+                </tr>                
+            {% endfor %}
+            <br>
+            <br>
+          <!--/<input type="submit" value="Alta Empleado" href="/create">  -->
+        </tbody>
+    </table>
+    {% include 'footer.html' %}

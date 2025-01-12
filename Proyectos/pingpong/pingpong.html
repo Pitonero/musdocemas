@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ping Pong Game</title>
+<style>
+  body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #000; }
+  canvas { border: 2px solid #fff; }
+</style>
+</head>
+<body>
+
+<canvas id="pongCanvas" width="800" height="400"></canvas>
+
+<script>
+const canvas = document.getElementById('pongCanvas');
+const ctx = canvas.getContext('2d');
+
+// Ball properties
+const ball = {
+  x: canvas.width / 2,
+  y: canvas.height / 2,
+  radius: 10,
+  speedX: 5,
+  speedY: 5,
+  color: '#fff'
+};
+
+// Paddle properties
+const paddleWidth = 10;
+const paddleHeight = 100;
+const playerPaddle = {
+  x: 0,
+  y: (canvas.height - paddleHeight) / 2,
+  width: paddleWidth,
+  height: paddleHeight,
+  color: '#fff',
+  score: 0
+};
+
+const computerPaddle = {
+  x: canvas.width - paddleWidth,
+  y: (canvas.height - paddleHeight) / 2,
+  width: paddleWidth,
+  height: paddleHeight,
+  color: '#fff',
+  score: 0
+};
+
+// Draw ball
+function drawBall(x, y, radius, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2, false);
+  ctx.closePath();
+  ctx.fill();
+}
+
+// Draw paddle
+function drawPaddle(x, y, width, height, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y, width, height);
+}
+
+// Draw net
+function drawNet() {
+  for (let i = 0; i < canvas.height; i += 15) {
+    drawRect(canvas.width / 2 - 1, i, 2, 10, '#fff');
+  }
+}
+
+// Draw rectangle
+function drawRect(x, y, w, h, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y, w, h);
+}
+
+// Update ball position
+function updateBall() {
+  ball.x += ball.speedX;
+  ball.y += ball.speedY;
+
+  // Top and bottom collision
+  if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
+    ball.speedY = -ball.speedY;
+  }
+
+  // Player paddle collision
+  let player = (ball.x < canvas.width / 2) ? playerPaddle : computerPaddle;
+  if (collision(ball, player)) {
+    // Where the ball hit the paddle
+    let collidePoint = ball.y - (player.y + player.height / 2);
+    collidePoint = collidePoint / (player.height / 2);
+
+    // Calculate angle in Radian
+    let angleRad = (Math.PI / 4) * collidePoint;
+
+    // X direction of the ball when it's hit
+    let direction = (ball.x < canvas.width / 2) ? 1 : -1;
+    ball.speedX = direction * ball.speed * Math.cos(angleRad);
+    ball.speedY = ball.speed * Math.sin(angleRad);
+
+    // Speed up the ball every time it hits a paddle
+    ball.speed += 0.1;
+  }
+
+  // When the ball hits the left or right wall
+  if (ball.x - ball.radius < 0) {
+    computerPaddle.score++;
+    resetBall();
+  } else if (ball.x + ball.radius > canvas.width) {
+    playerPaddle.score++;
+    resetBall();
+  }
+}
+
+// Reset ball position
+function resetBall() {
+  ball.x = canvas.width / 2;
+  ball.y = canvas.height / 2;
+  ball.speed = 5;
+  ball.speedX = -ball.speedX;
+}
+
+// Collision detection
+function collision(b, p) {
+  b.top = b.y - b.radius;
+  b.bottom = b.y + b.radius;
+  b.left = b.x - b.radius;
+  b.right = b.x + b.radius;
+
+  p.top = p.y;
+  p.bottom = p.y + p.height;
+  p.left = p.x;
+  p.right = p.x + p.width;
+
+  return b.right > p.left && b.bottom > p.top && b.left < p.right && b.top < p.bottom;
+}
+
+// Move paddles
+function movePaddles() {
+  if (playerPaddle.y < 0) playerPaddle.y = 0;
+  else if (playerPaddle.y + playerPaddle.height > canvas.height) playerPaddle.y = canvas.height - playerPaddle.height;
+
+  // Computer paddle movement
+  let centerPaddleY = computerPaddle.y + computerPaddle.height / 2;
+  if (centerPaddleY < ball.y - 35) computerPaddle.y += 6;
+  else if (centerPaddleY > ball.y + 35) computerPaddle.y -= 6;
+
+  if (computerPaddle.y < 0) computerPaddle.y = 0;
+  else if (computerPaddle.y + computerPaddle.height > canvas.height) computerPaddle.y = canvas.height - computerPaddle.height;
+}
+
+// Render scores
+function renderScores() {
+  ctx.fillStyle = '#fff';
+  ctx.font = '48px fantasy';
+  ctx.fillText(playerPaddle.score, canvas.width / 4, 50);
+  ctx.fillText(computerPaddle.score, 3 * canvas.width / 4, 50);
+}
+
+// Game loop
+function gameLoop() {
+  drawRect(0, 0, canvas.width, canvas.height, '#000'); // Clear canvas
+  drawNet(); // Draw net
+  drawScore(); // Draw scores
+  drawRect(playerPaddle.x, playerPaddle.y, playerPaddle.width, playerPaddle.height, playerPaddle.color); // Draw player paddle
+  drawRect(computerPaddle.x, computerPaddle.y, computerPaddle.width, computerPaddle.height, computerPaddle.color); // Draw computer paddle
+  drawBall(ball.x, ball.y, ball.radius, ball.color); // Draw ball
+
+  updateBall(); // Update ball position
+  movePaddles(); // Move paddles
+  renderScores(); // Render scores
+}
+
+// Control player paddle
+document.addEventListener('mousemove', movePlayerPaddle);
+
+function movePlayerPaddle(event) {
+  let rect = canvas.getBoundingClientRect();
+  playerPaddle.y = event.clientY - rect.top - playerPaddle.height / 2;
+}
+
+// Start the game loop
+setInterval(gameLoop, 1000 / 60); // 60 frames per second
+
+</script>
+
+</body>
+</html>

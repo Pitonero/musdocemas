@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Bouncing Balls in Cube Simulation</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #111; color: #fff; }
+    #controls {
+      position: absolute; top: 10px; left: 10px; z-index: 1;
+      display: flex; flex-direction: column; gap: 8px; font-family: Arial, sans-serif;
+    }
+    input[type=range] { -webkit-appearance: none; height: 8px; background: #ff80c0; border-radius: 4px; }
+    input[type=range]::-webkit-slider-thumb { width: 16px; height: 16px; background: #ff40a0; cursor: pointer; }
+    button { background: #ff80c0; border: none; padding: 8px 12px; cursor: pointer; border-radius: 4px; color: #111; }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <label>Número de Bolas: <input id="numBalls" type="range" min="1" max="100" value="10"></label>
+    <label>Gravedad: <input id="gravity" type="range" min="0" max="0.5" step="0.01" value="0.1"></label>
+    <label>Tamaño del Cubo: <input id="cubeSize" type="range" min="10" max="100" value="50"></label>
+    <button id="bounce">Rebotar</button>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    let scene, camera, renderer, cube, balls = [], controls;
+    let cubeSize = 50, gravity = 0.1, numBalls = 10;
+    let mouseDown = false, startX, startY, rotationSpeed = 0.005;
+
+    init();
+    animate();
+
+    function init() {
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.z = 100;
+
+      renderer = new THREE.WebGLRenderer();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      cube = createCube();
+      scene.add(cube);
+      createBalls(numBalls);
+
+      document.getElementById("numBalls").oninput = e => updateBalls(parseInt(e.target.value));
+      document.getElementById("gravity").oninput = e => gravity = parseFloat(e.target.value);
+      document.getElementById("cubeSize").oninput = e => updateCubeSize(parseFloat(e.target.value));
+      document.getElementById("bounce").onclick = randomizeBalls;
+
+      window.addEventListener('mousedown', onMouseDown);
+      window.addEventListener('mouseup', () => mouseDown = false);
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('resize', onWindowResize);
+    }
+
+    function createCube() {
+      let geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
+      let material = new THREE.MeshBasicMaterial({ color: 0x39ff14, wireframe: true });
+      return new THREE.Mesh(geometry, material);
+    }
+
+    function createBalls(num) {
+      for (let i = balls.length - 1; i >= 0; i--) scene.remove(balls.pop());
+      const colors = [0xff40a0, 0xff80c0, 0x00f6ff, 0xff9f1a];
+      for (let i = 0; i < num; i++) {
+        let geometry = new THREE.SphereGeometry(1.5, 16, 16);
+        let material = new THREE.MeshStandardMaterial({ color: colors[Math.floor(Math.random() * colors.length)] });
+        let ball = new THREE.Mesh(geometry, material);
+        ball.position.set((Math.random() - 0.5) * cubeSize, (Math.random() - 0.5) * cubeSize, (Math.random() - 0.5) * cubeSize);
+        ball.velocity = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5);
+        balls.push(ball);
+        scene.add(ball);
+      }
+    }
+
+    function randomizeBalls() {
+      balls.forEach(ball => {
+        ball.velocity.set((Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2);
+      });
+    }
+
+    function updateBalls(num) {
+      numBalls = num;
+      createBalls(numBalls);
+    }
+
+    function updateCubeSize(size) {
+      cubeSize = size;
+      scene.remove(cube);
+      cube = createCube();
+      scene.add(cube);
+      balls.forEach(ball => {
+        ball.position.clampScalar(-cubeSize / 2, cubeSize / 2);
+      });
+    }
+
+    function onMouseDown(event) {
+      mouseDown = true;
+      startX = event.clientX;
+      startY = event.clientY;
+    }
+
+    function onMouseMove(event) {
+      if (!mouseDown) return;
+      const deltaX = event.clientX - startX;
+      const deltaY = event.clientY - startY;
+      startX = event.clientX;
+      startY = event.clientY;
+
+      scene.rotation.y += deltaX * rotationSpeed;
+      scene.rotation.x += deltaY * rotationSpeed;
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      balls.forEach(ball => {
+        ball.velocity.y -= gravity;
+        ball.position.add(ball.velocity);
+
+        const halfSize = cubeSize / 2;
+        ['x', 'y', 'z'].forEach(axis => {
+          if (Math.abs(ball.position[axis]) + 1.5 > halfSize) {
+            ball.position[axis] = Math.sign(ball.position[axis]) * (halfSize - 1.5);
+            ball.velocity[axis] *= -0.8;
+            if (axis === 'y') ball.velocity[axis] *= 0.9;
+          }
+        });
+      });
+
+      renderer.render(scene, camera);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Musdocemas - Bienvenido</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        body {
+            font-family: 'Georgia', serif;
+            background-image: url('static/img/mesa_mus_background.jpg');
+            background-size: cover;
+            background-position: center;
+            color: #fff;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+
+        header img {
+            width: 60px;
+        }
+
+        header h1 {
+            font-size: 36px;
+            margin-left: 10px;
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            gap: 15px;
+        }
+
+        nav a {
+            color: #f0e68c;
+            text-decoration: none;
+            font-size: 18px;
+            padding: 10px 20px;
+            border: 1px solid #f0e68c;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        nav a:hover {
+            background-color: #f0e68c;
+            color: #000;
+        }
+
+        main {
+            padding: 40px;
+            text-align: center;
+        }
+
+        .intro h2 {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .intro p {
+            font-size: 24px;
+            margin-bottom: 30px;
+        }
+
+        .cta-button {
+            font-size: 20px;
+            background-color: #8b4513;
+            color: #fff;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .cta-button:hover {
+            background-color: #a0522d;
+        }
+
+        section {
+            margin: 40px 0;
+        }
+
+        footer {
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #ccc;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .footer-nav a {
+            color: #f0e68c;
+            margin: 0 10px;
+            text-decoration: none;
+        }
+
+        .footer-nav a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div style="display: flex; align-items: center;">
+            <img src="static/img/logo_musdocemas.webp" alt="Logo Musdocemas">
+            <h1>Musdocemas</h1>
+        </div>
+        <nav>
+            <ul>
+                <li><a href="{{url_for('reglas')}}">Reglas</a></li>
+                <li><a href="{{url_for('tutorial')}}">Tutorial</a></li>
+                <li><a href="{{url_for('ranking')}}">Ranking</a></li>
+                <li><a href="{{url_for('iniciosesion')}}">Iniciar Sesión</a></li>
+                <li><a href="{{url_for('registrarse')}}">Registrarse</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="intro">
+            <h2>Bienvenido a Musdocemas</h2>
+            <p>Únete a la comunidad y vive la experiencia del Mus en línea.</p>
+            <button class="cta-button" onclick="window.location.href='{{url_for('registrarse')}}'">Regístrate ahora</button>
+        </section>
+
+        <section id="reglas">
+            <h3>Reglas del Mus</h3>
+            <p>Conoce las reglas básicas y perfecciona tu juego.</p>
+            <a href="{{url_for('reglas')}}" class="cta-button">Ver más</a>
+        </section>
+
+        <section id="tutorial">
+            <h3>Tutorial Interactivo</h3>
+            <p>Descubre todas las estrategias y señas del Mus.</p>
+            <a href="{{url_for('tutorial')}}" class="cta-button">Ver tutorial</a>
+        </section>
+
+        <section id="ranking">
+            <h3>Clasificación Global</h3>
+            <p>Compite y alcanza el primer puesto en la clasificación.</p>
+            <a href="{{url_for('ranking')}}" class="cta-button">Ver ranking</a>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Musdocemas. Todos los derechos reservados.</p>
+        <nav class="footer-nav">
+            <a href="#contacto">Contacto</a> |
+            <a href="#privacidad">Política de Privacidad</a> |
+            <a href="#terminos">Términos de Servicio</a>
+        </nav>
+    </footer>
+</body>
+</html>

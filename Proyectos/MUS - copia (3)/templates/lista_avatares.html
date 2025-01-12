@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Seleccionar Avatar</title>
+    <style>
+        .avatar-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .avatar {
+            width: 100px;
+            height: 100px;
+            border: 2px solid #ccc;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .avatar:hover {
+            transform: scale(1.1);
+            border-color: #4b8b3b;
+        }
+    </style>
+</head>
+<body>
+    <h1>Selecciona tu Avatar</h1>
+    <div class="avatar-container">
+        {% for avatar in avatares %}
+        <a href="{{ url_for('seleccionar_avatar', avatar=avatar) }}">
+            <img src="{{ url_for('static', filename='img/avatares/' + avatar) }}" alt="Avatar" class="avatar">
+        </a>
+        {% endfor %}
+    </div>
+</body>
+</html>
+

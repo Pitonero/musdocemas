@@ -1,0 +1,9 @@
+# Ignorar el archivo .env
+.env
+
+# Ignorar archivos temporales de Python
+__pycache__/
+
+# Ignorar configuraciones locales de tu entorno
+.vscode/
+.idea/
