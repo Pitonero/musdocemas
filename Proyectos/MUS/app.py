@@ -18,6 +18,7 @@ import time
 import traceback
 #app = create_app() 
 #def create_app():
+#from waitress import serve
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -25,7 +26,9 @@ app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_COOKIE_NAME'] = 'session_usuario'
 Session(app)
 #socketio = SocketIO(app, manage_session=False)
-socketio = SocketIO(app, async_mode='eventlet')  # Usa eventlet
+socketio = SocketIO(app, async_mode='threading')
+
+#socketio = SocketIO(app, async_mode='eventlet')  # Usa eventlet
 #socketio = SocketIO(app, async_mode='gevent')
 
 #Imprime la Ubicación 
@@ -2749,4 +2752,8 @@ def debug_manos(mesa):
 #########################
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    socketio.run(app, host='0.0.0.0', port=8000)
+
+
+#if __name__ == '__main__':
+ #   socketio.run(app, debug=True)
