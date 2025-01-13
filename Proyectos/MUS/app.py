@@ -44,19 +44,9 @@ table_counter = 1  # Contador global para las mesas
 puntos_juego = 40 # valor de puntos en un juego
 juegos_vaca = 2  # valor de juegos en una vaca
 
+
 @app.route('/')
 def index():
-    # Conectamos a la base de datos
-    connection = CConexion.ConexionBaseDeDatos()
-
-    if connection:
-        cursor = connection.cursor(dictionary=True)  # Retorna los resultados como diccionarios
-        cursor.execute("select * from mus_game.usuarios where alias = 'Gordiano1'")
-        jugador = cursor.fetchall()
-        connection.close()
-    else:
-        jugador = []
-    print("Resultado lectura: ", jugador)
 
     return render_template('index.html')
 
