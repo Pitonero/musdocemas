@@ -44,12 +44,9 @@ table_counter = 1  # Contador global para las mesas
 puntos_juego = 40 # valor de puntos en un juego
 juegos_vaca = 2  # valor de juegos en una vaca
 
-
 @app.route('/')
 def index():
-
     return render_template('index.html')
-
 
 @app.route('/logout')
 def logout():
