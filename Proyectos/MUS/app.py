@@ -18,7 +18,6 @@ import time
 import traceback
 #app = create_app() 
 #def create_app():
-#from waitress import serve
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -26,9 +25,7 @@ app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_COOKIE_NAME'] = 'session_usuario'
 Session(app)
 #socketio = SocketIO(app, manage_session=False)
-socketio = SocketIO(app, async_mode='threading')
-
-#socketio = SocketIO(app, async_mode='eventlet')  # Usa eventlet
+socketio = SocketIO(app, async_mode='eventlet')  # Usa eventlet
 #socketio = SocketIO(app, async_mode='gevent')
 
 #Imprime la Ubicación 
@@ -47,19 +44,9 @@ table_counter = 1  # Contador global para las mesas
 puntos_juego = 40 # valor de puntos en un juego
 juegos_vaca = 2  # valor de juegos en una vaca
 
-
-'''
 @app.route('/')
 def index():
     return render_template('index.html')
-'''
-@app.route('/')
-def index():
-    return redirect('/inicio')
-
-@app.route('/inicio')
-def inicio():
-    return "Bienvenido a Musdocemas"
 
 @app.route('/logout')
 def logout():
@@ -2762,8 +2749,10 @@ def debug_manos(mesa):
 #########################
 
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=8000)
-
-
-#if __name__ == '__main__':
- #   socketio.run(app, debug=True)
+    # Detecta si está en producción o local
+    if os.getenv('RENDER') == 'true':
+        # Configuración para Render
+        socketio.run(app, host='0.0.0.0', port=8000)
+    else:
+        # Configuración para local
+        socketio.run(app, debug=True)
