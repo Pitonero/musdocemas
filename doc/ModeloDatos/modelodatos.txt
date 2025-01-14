@@ -1,0 +1,71 @@
+CREATE TABLE Usuarios (
+    usuario_id INT PRIMARY KEY AUTO_INCREMENT,
+    nombre_usuario VARCHAR(50) NOT NULL UNIQUE,
+    alias VARCHAR(50) UNIQUE,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    avatar_url VARCHAR(255),
+    fecha_registro DATE DEFAULT CURRENT_DATE
+);
+
+CREATE TABLE Juegos (
+    juego_id INT PRIMARY KEY AUTO_INCREMENT,
+    nombre_juego VARCHAR(100) NOT NULL UNIQUE,
+    descripcion TEXT,
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE Rankings (
+    ranking_id INT PRIMARY KEY AUTO_INCREMENT,
+    usuario_id INT NOT NULL,
+    juego_id INT NOT NULL,
+    puntos INT DEFAULT 0,
+    FOREIGN KEY (usuario_id) REFERENCES Usuarios(usuario_id),
+    FOREIGN KEY (juego_id) REFERENCES Juegos(juego_id),
+    UNIQUE (usuario_id, juego_id) -- Un usuario no puede tener más de un ranking por juego
+);
+
+CREATE TABLE Mesas (
+    mesa_id INT PRIMARY KEY AUTO_INCREMENT,
+    nombre_mesa VARCHAR(100) NOT NULL,
+    juego_id INT NOT NULL, -- Indica a qué juego pertenece la mesa
+    creador_id INT NOT NULL, -- Usuario que creó la mesa
+    estado ENUM('esperando', 'en juego', 'completada') DEFAULT 'esperando',
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (juego_id) REFERENCES Juegos(juego_id),
+    FOREIGN KEY (creador_id) REFERENCES Usuarios(usuario_id)
+);
+
+CREATE TABLE ParticipantesMesa (
+    participante_id INT PRIMARY KEY AUTO_INCREMENT,
+    mesa_id INT NOT NULL,
+    usuario_id INT NOT NULL,
+    posicion INT NOT NULL, -- La posición en la mesa (1 a 4, por ejemplo)
+    avatar_url VARCHAR(255), -- Avatar usado en la mesa
+    FOREIGN KEY (mesa_id) REFERENCES Mesas(mesa_id),
+    FOREIGN KEY (usuario_id) REFERENCES Usuarios(usuario_id),
+    UNIQUE (mesa_id, posicion) -- Cada posición en la mesa debe ser única
+);
+
+Un jugador con usuario_id = 1 tiene 1200 puntos en el juego Mus (juego_id = 1).
+
+INSERT INTO Rankings (usuario_id, juego_id, puntos)
+VALUES (1, 1, 1200);
+
+l usuario con usuario_id = 1 ocupa la posición 1 en la mesa con mesa_id = 1.
+INSERT INTO ParticipantesMesa (mesa_id, usuario_id, posicion, avatar_url)
+VALUES (1, 1, 1, 'static/img/avatares/avatar1.png');
+
+Cuando un jugador gana una partida, puedes actualizar su ranking:
+
+UPDATE Rankings
+SET puntos = puntos + 50
+WHERE usuario_id = 1 AND juego_id = 1;
+
+
+
+
+
+
+
+

@@ -1,0 +1,47 @@
+
+function toggleAsiento(elemento, mesaId, asientoIndex) {
+    const avatar = "ruta_del_avatar"; // Obtener la URL del avatar del usuario
+    const ranking = 1234; // Sustituir con el ranking real del usuario
+    const username = "NombreUsuario"; // Nombre del usuario
+
+    if (!elemento.classList.contains('ocupado')) {
+        elemento.classList.add('ocupado');
+        socket.emit('entrar_asiento', {
+            username: username,
+            avatar: avatar,
+            ranking: ranking,
+            table_id: mesaId,
+            asiento: asientoIndex
+        });
+    } else {
+        elemento.classList.remove('ocupado');
+        socket.emit('salir_asiento', {
+            table_id: mesaId,
+            asiento: asientoIndex
+        });
+    }
+}
+
+
+socket.on('update_tables', (tables) => {
+    Object.keys(tables).forEach(mesaId => {
+        const mesa = tables[mesaId];
+        const mesaElement = document.querySelector(`#${mesaId}`);
+        const jugadores = mesa["jugadores"];
+
+        if (mesaElement) {
+            jugadores.forEach((jugador, index) => {
+                const asiento = mesaElement.querySelectorAll(".jugador")[index];
+                const nombreEtiqueta = mesaElement.querySelectorAll(".nombre-jugador")[index];
+
+                if (jugador.username) {
+                    asiento.style.backgroundImage = `url(${jugador.avatar})`;
+                    nombreEtiqueta.textContent = `${jugador.username} (Rank: ${jugador.ranking})`;
+                } else {
+                    asiento.style.backgroundImage = "";
+                    nombreEtiqueta.textContent = `Jugador ${index + 1}`;
+                }
+            });
+        }
+    });
+});

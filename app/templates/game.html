@@ -1,0 +1,31 @@
+<!-- templates/game.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Sala de Juego</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <h1>Sala de Juego</h1>
+    <div id="game-board">
+        <div id="player-hand">
+            <!-- Muestra las cartas de cada jugador -->
+        </div>
+        <div id="controls">
+            <button onclick="sendMove('mus')">Mus</button>
+            <button onclick="sendMove('no_mus')">No hay Mus</button>
+            <button onclick="sendMove('envidar')">Envidar</button>
+            <button onclick="sendMove('ver')">Ver</button>
+        </div>
+        <div id="scoreboard">
+            <h3>Marcador</h3>
+            <p>Equipo 1: <span id="score1">0</span></p>
+            <p>Equipo 2: <span id="score2">0</span></p>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/socketio.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/game.js') }}"></script>
+</body>
+</html>

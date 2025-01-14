@@ -1,0 +1,28 @@
+mus-game/
+├── app.py                  # Archivo principal de la aplicación
+├── requirements.txt        # Dependencias del proyecto
+├── templates/              # Carpeta para plantillas HTML
+│   ├── lobby.html
+│   ├── game.html
+├── static/                 # Carpeta para archivos estáticos
+│   ├── css/
+│   │   ├── styles.css
+│   │   ├── game.css
+│   ├── js/
+│   │   ├── lobby.js
+│   │   ├── game.js
+│   ├── images/
+│   │   ├── card-back.png
+│   │   ├── card-front.png
+├── app/                    # Carpeta para los módulos de la aplicación
+│   ├── __init__.py
+│   ├── models/             # Carpeta para modelos de base de datos
+│   │   ├── __init__.py
+│   │   ├── user.py
+│   │   ├── room.py
+│   │   ├── game.py
+│   ├── auth.py             # Módulo de autenticación
+│   ├── game_logic.py       # Módulo de lógica del juego
+│   ├── sockets.py          # Módulo para manejar WebSockets
+├── tests/                  # Carpeta para archivos de prueba
+│   ├── tests.py

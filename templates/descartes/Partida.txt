@@ -1,0 +1,155 @@
+
+El desarrollo del sistema para gestionar el juego de Mus con turnos, lances, rondas y amarracos 
+requiere una estructura clara. Vamos paso a paso para que tengas un mapa sobre cómo abordar este desafío. 
+Esto implica dividir las responsabilidades entre el servidor y los clientes (jugadores).
+
+1. Organización General del Juego
+Para gestionar turnos, lances, rondas y amarracos, necesitas estructurar los conceptos básicos:
+
+Elementos del Juego:
+
+Rondas: Cada ronda contiene varios lances.
+Lances: Cada lance (grande, chica, pares, juego) requiere que los jugadores se pronuncien (apostar, pasar, ordago, etc.).
+Amarracos: Representan los puntos apostados; deben contabilizarse para decidir ganadores.
+Roles del Sistema:
+
+Servidor: Gestiona el estado global (turno actual, apuestas, amarracos, lances) y notifica a los clientes.
+Clientes: Envían acciones (pasar, ver, ordago, etc.) al servidor y reciben actualizaciones.
+2. Plan de Acción
+Estructura del Juego en el Servidor:
+
+Estado del Juego: Mantén una estructura de datos en el servidor que refleje el estado actual del juego.
+Gestión de Turnos y Lances: Controla qué jugador tiene el turno y qué lance está activo.
+Amarracos: Calcula y actualiza los puntos apostados en cada lance y ronda.
+Comunicación Servidor-Cliente:
+
+Usa WebSockets para enviar y recibir actualizaciones en tiempo real.
+Define eventos como turno_actual, lance_actual, accion_jugador, resultado_lance.
+Flujo del Juego:
+
+Inicio de Ronda:
+Servidor define el primer lance (grande).
+Inicia el turno del primer jugador.
+Lance Activo:
+Jugador en turno realiza su acción (pasar, ver, ordago, etc.).
+Servidor actualiza el estado y notifica a los demás jugadores.
+Si el lance termina (todos han pasado o apostado), el servidor avanza al siguiente lance.
+Fin de Ronda:
+Una vez completados todos los lances, calcula los resultados.
+Actualiza los amarracos y decide si el juego continúa o finaliza.
+
+
+PY Estado del Juego (Python)
+
+# Estado del juego en el servidor
+estado_juego = {
+    "jugadores": ["jugador1", "jugador2", "jugador3", "jugador4"],
+    "turno_actual": 0,  # Índice del jugador con el turno
+    "lance_actual": "grande",  # Puede ser: "grande", "chica", "pares", "juego"
+    "apuestas": [],  # Registro de las apuestas actuales
+    "amarracos": {  # Amarracos de cada equipo
+        "equipo1": 10,
+        "equipo2": 10
+    },
+    "acciones": {}  # Acciones realizadas por cada jugador en el lance actual
+}
+
+Eventos del Servidor (Flask-SocketIO)
+Inicio del Turno:
+El servidor envía el estado inicial a los clientes.
+@socketio.on('iniciar_juego')
+def iniciar_juego():
+    # Notifica a los clientes quién tiene el turno
+    socketio.emit('turno_actual', {
+        "turno_actual": estado_juego["jugadores"][estado_juego["turno_actual"]],
+        "lance_actual": estado_juego["lance_actual"],
+        "amarracos": estado_juego["amarracos"]
+    })
+
+Acción de un Jugador:
+Cuando un jugador realiza una acción, actualiza el estado y pasa al siguiente turno.
+
+@socketio.on('accion_jugador')
+def accion_jugador(data):
+    jugador = data['jugador']
+    accion = data['accion']
+    apuesta = data.get('apuesta', 0)
+
+    # Registra la acción
+    estado_juego["acciones"][jugador] = {
+        "accion": accion,
+        "apuesta": apuesta
+    }
+
+    # Actualiza los amarracos si hay una apuesta
+    if accion == "apuesta":
+        if jugador in estado_juego["jugadores"][:2]:  # Equipo 1
+            estado_juego["amarracos"]["equipo1"] += apuesta
+        else:  # Equipo 2
+            estado_juego["amarracos"]["equipo2"] += apuesta
+
+    # Avanza al siguiente turno
+    estado_juego["turno_actual"] = (estado_juego["turno_actual"] + 1) % len(estado_juego["jugadores"])
+
+    # Notifica el turno actual
+    socketio.emit('turno_actual', {
+        "turno_actual": estado_juego["jugadores"][estado_juego["turno_actual"]],
+        "acciones": estado_juego["acciones"],
+        "amarracos": estado_juego["amarracos"]
+    })
+	
+	
+Cambio de Lance:
+Cuando termina un lance, pasa al siguiente.
+
+def avanzar_lance():
+    lances = ["grande", "chica", "pares", "juego"]
+    indice_actual = lances.index(estado_juego["lance_actual"])
+    if indice_actual < len(lances) - 1:
+        estado_juego["lance_actual"] = lances[indice_actual + 1]
+    else:
+        # Fin de la ronda
+        calcular_resultados()
+
+
+CODIGO JAVASCRIPT El cliente interactúa con los turnos y realiza acciones mediante WebSockets:
+
+const socket = io();
+
+// Recibir el turno actual
+socket.on('turno_actual', (data) => {
+    console.log(`Es el turno de ${data.turno_actual}`);
+    console.log(`Lance actual: ${data.lance_actual}`);
+    console.log(`Amarracos:`, data.amarracos);
+
+    // Habilitar botones si es tu turno
+    const esMiTurno = data.turno_actual === jugadorID;
+    actualizarBotones(esMiTurno);
+});
+
+// Enviar una acción al servidor
+function enviarAccion(accion, apuesta = 0) {
+    socket.emit('accion_jugador', {
+        jugador: jugadorID,
+        accion: accion,
+        apuesta: apuesta
+    });
+}
+
+// Ejemplo: Botón de "Pasar"
+document.getElementById('btnPasar').addEventListener('click', () => {
+    enviarAccion('pasar');
+});
+
+5. Flujos a Implementar
+Turno por Turno:
+Los clientes reciben información sobre el turno actual.
+Solo el jugador activo puede interactuar.
+Gestión de Lances:
+Al terminar un lance, el servidor avanza al siguiente.
+Control de Amarracos:
+Las apuestas afectan los amarracos y los resultados de la ronda.
+Siguientes Pasos:
+Define los eventos y la lógica de los lances en detalle.
+Implementa la lógica para decidir qué sucede cuando un lance termina.
+Prueba la sincronización entre los jugadores.

@@ -1,0 +1,42 @@
+tables[table_id] = {
+    "nombre": f"Mesa_{table_counter}",
+    "estado": "En espera",
+    "jugadores": [
+        {"username": None, "avatar": None, "ranking": None},
+        {"username": None, "avatar": None, "ranking": None},
+        {"username": None, "avatar": None, "ranking": None},
+        {"username": None, "avatar": None, "ranking": None},
+    ]
+}
+
+
+
+@socketio.on('entrar_asiento')
+def handle_entrar_asiento(data):
+    username = data['username']
+    avatar = data['avatar']  # Asumimos que el avatar se pasa desde el cliente
+    ranking = data['ranking']  # Asumimos que el ranking también se pasa
+    table_id = data['table_id']
+    asiento = data['asiento']
+
+    if table_id in tables and tables[table_id]["jugadores"][asiento]["username"] is None:
+        tables[table_id]["jugadores"][asiento] = {
+            "username": username,
+            "avatar": avatar,
+            "ranking": ranking
+        }
+        emit('update_tabletas', tables, broadcast=True)
+
+
+@socketio.on('salir_asiento')
+def handle_salir_asiento(data):
+    table_id = data['table_id']
+    asiento = data['asiento']
+
+    if table_id in tables:
+        tables[table_id]["jugadores"][asiento] = {
+            "username": None,
+            "avatar": None,
+            "ranking": None
+        }
+        emit('update_tabletas', tables, broadcast=True)

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mus Doce Más - Juega Mus en Línea</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <!-- Encabezado con logo e ítems de navegación -->
+    <header>
+        <div class="logo">
+            <img src="../static/img/musdocemas.webp" alt="Logo de Mus Online" width="100" height="auto"> <!-- Imagen del logo -->
+        </div>
+		<div class="user-info">
+		     <h1>Mus Doce Más</h1>
+        </div>
+        <nav>
+        <div class="right-section">
+            <div class="user-info">
+                <img src="../static/img/avatar.png" alt="Avatar" style="width: 35px; border-radius: 50%; vertical-align: middle;">
+                <span style="margin-left: 10px;" data-name="txtAlias">{{ usuario }}</span>
+            </div>
+            <span class="icon" title="Enviar email">📧</span>
+            <span class="icon" title="Actualizar perfil">🔄</span>
+            <span class="icon" title="Cerrar sesión">🚪</span>
+        </div>
+
+        </nav>
+    </header>
+    <!-- Sección principal con bienvenida e introducción -->
+    <main>
+        <section class="intro">
+            <h2>¡Bienvenido {{ nombre }}!</h2> 
+            <p>Únete a la comunidad de jugadores de Mus. Juega con amigos o compite contra jugadores de todo el mundo.</p>
+            <a href="{{url_for('lobby')}}" class="cta-button">Entrar a la sala de espera</a>
+        </section>
+
+        <!-- Sección de reglas y tutorial -->
+        <section id="reglas" class="section">
+            <h3>Reglas del Mus</h3>
+            <p>El Mus es un juego de cartas tradicional que se juega en parejas. Aprende las reglas básicas y empieza a competir.</p>
+            <a href="#reglas" class="secondary-button">Ver más</a>
+        </section>
+
+        <section id="tutorial" class="section">
+            <h3>Tutorial Interactivo</h3>
+            <p>¿Nuevo en el Mus? Explora nuestro tutorial interactivo y conoce todas las estrategias y señas.</p>
+            <a href="#tutorial" class="secondary-button">Ver tutorial</a>
+        </section>
+
+        <!-- Ranking de jugadores -->
+        <section id="ranking" class="section">
+            <h3>Clasificación Global</h3>
+            <p>Descubre quiénes son los mejores jugadores y compite para alcanzar el primer lugar en el ranking.</p>
+            <a href="#ranking" class="secondary-button">Ver clasificación</a>
+        </section>
+    </main>
+
+    <!-- Pie de página con enlaces adicionales -->
+    <footer>
+        <p>&copy; 2024 Pablo Nieto. Todos los derechos reservados.</p>
+        <nav class="footer-nav">
+            <a href="#contacto">Contacto</a> |
+            <a href="#privacidad">Política de Privacidad</a> |
+            <a href="#terminos">Términos de Servicio</a>
+        </nav>
+    </footer>
+	
+
+</body>
+</html>

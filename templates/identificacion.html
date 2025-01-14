@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - Musdocemas</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Georgia', serif;
+            background-image: url('static/img/mesa_mus.png');
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #fff;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 400px;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 32px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            background-color: #ddd;
+            margin-top: 5px;
+        }
+
+        .login-button {
+            width: 100%;
+            padding: 12px;
+            font-size: 18px;
+            color: white;
+            background-color: #8b4513;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background-color 0.3s;
+        }
+
+        .login-button:hover {
+            background-color: #a0522d;
+        }
+
+        .forgot-password {
+            display: block;
+            margin-top: 15px;
+            font-size: 14px;
+            color: #f0e68c;
+            text-decoration: none;
+        }
+
+        .forgot-password:hover {
+            text-decoration: underline;
+        }
+
+        .login-container img {
+            margin-bottom: 20px;
+            width: 100px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <img src="../static/img/logomus.webp" alt="Logo Musdocemas">
+        <h1>Iniciar Sesión</h1>
+        <form method="post" action="/acceso" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="username">Nombre de usuario</label>
+                <input type="text" id="username" name="username" value="{{ usuario }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Contraseña</label>
+                <input type="password" id="password" name="password" value="{{ password }}" required>				
+            </div>
+            <div class="form-group">
+                <label class="switch" for="RememberLogin">
+                    <input type="checkbox" id="RememberLogin" name="RememberLogin" value="true">
+                    Recordar acceso
+                </label>
+            </div>
+			{% if mensaje_error %}
+            <div class="mensaje error" style="color: red;">{{ mensaje_error }}</div>
+			{% endif %}	
+            <button type="submit" class="login-button">Iniciar Sesión</button>
+        </form>
+        <a href="#" class="forgot-password">¿Olvidaste tu contraseña?</a>
+    </div>
+</body>
+</html>

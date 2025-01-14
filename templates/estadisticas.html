@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ranking de Jugadores de MUS (En desarrollo)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        header {
+            background-color: #374151;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .ranking-table {
+            max-width: 800px;
+            width: 100%;
+            background-color: #ffffff;
+            border-collapse: collapse;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .ranking-table th, .ranking-table td {
+            padding: 15px;
+            text-align: center;
+        }
+
+        .ranking-table th {
+            background-color: #2563eb;
+            color: white;
+        }
+
+        .ranking-table tr:nth-child(even) {
+            background-color: #f1f5f9;
+        }
+
+        .ranking-table tr:hover {
+            background-color: #e2e8f0;
+        }
+
+        footer {
+            margin-top: 20px;
+            text-align: center;
+            padding: 10px;
+            background-color: #374151;
+            color: white;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Ranking de Jugadores de MUS</h1>
+        <p>Consulta los mejores jugadores y sus estadísticas de partidas ganadas y puntuación total.</p>
+    </header>
+
+    <table class="ranking-table">
+        <thead>
+            <tr>
+                <th>Posición</th>
+                <th>Jugador</th>
+                <th>Partidas Ganadas</th>
+                <th>Puntuación</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>1</td>
+                <td>Juan Pérez</td>
+                <td>150</td>
+                <td>3,200</td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td>María López</td>
+                <td>140</td>
+                <td>3,100</td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td>Carlos Ruiz</td>
+                <td>130</td>
+                <td>2,950</td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td>Laura Fernández</td>
+                <td>125</td>
+                <td>2,850</td>
+            </tr>
+            <tr>
+                <td>5</td>
+                <td>José Martínez</td>
+                <td>120</td>
+                <td>2,700</td>
+            </tr>
+            <tr>
+                <td>6</td>
+                <td>Ana García</td>
+                <td>110</td>
+                <td>2,550</td>
+            </tr>
+            <tr>
+                <td>7</td>
+                <td>Diego Torres</td>
+                <td>105</td>
+                <td>2,500</td>
+            </tr>
+            <tr>
+                <td>8</td>
+                <td>Sofía Moreno</td>
+                <td>100</td>
+                <td>2,450</td>
+            </tr>
+            <tr>
+                <td>9</td>
+                <td>Pedro Ramírez</td>
+                <td>95</td>
+                <td>2,300</td>
+            </tr>
+            <tr>
+                <td>10</td>
+                <td>Lucía Sánchez</td>
+                <td>90</td>
+                <td>2,200</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <footer>
+        <p>&copy; 2023 Juega al MUS - Todos los derechos reservados</p>
+    </footer>
+
+</body>
+</html>
+
