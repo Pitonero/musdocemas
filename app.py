@@ -46,7 +46,8 @@ juegos_vaca = 2  # valor de juegos en una vaca
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return "¡Hola Mundo desde Flask!"
+    #return render_template('index.html')
 
 @app.route('/logout')
 def logout():
@@ -2749,6 +2750,10 @@ def debug_manos(mesa):
 #########################
 
 if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8000)
+
+'''
+if __name__ == '__main__':
     # Detecta si está en producción o local
     if os.getenv('RENDER') == 'true':
         # Configuración para Render
@@ -2756,3 +2761,4 @@ if __name__ == '__main__':
     else:
         # Configuración para local
         socketio.run(app, debug=True)
+'''
