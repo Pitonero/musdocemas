@@ -377,7 +377,7 @@ def acceso():
     print("DEBUG. Datos usuario leer:", datosusuario, " leidos: ", registros)
 
     if registros != 1:
-        mensaje_error = "Debe teclear el usuario."
+        mensaje_error = "Usuario no encontrado."
     else:
         nombre = datosusuario [0] [1]
         usuariobd = datosusuario [0] [2]
@@ -413,7 +413,7 @@ def acceso():
             if usuario and usuario not in logged_players:
                 logged_players.append(usuario)
 
-        return render_template('identificacion.html', usuario=usuario,password=password,mensaje_error=mensaje_error)
+    return render_template('identificacion.html', usuario=usuario,password=password,mensaje_error=mensaje_error)
 
 
 @socketio.on('join')

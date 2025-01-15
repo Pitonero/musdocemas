@@ -1241,8 +1241,17 @@ button:active {
 						const cartaElement = document.createElement('div');
 						cartaElement.classList.add('carta');
 
+						// Mostrar las cartas del jugador conectado y ocultar las de los demás
+						let rutaImagen;
+						if (jugador === "{{ usuario }}") {
+							rutaImagen = `/static/img/cartas/${carta}.png`; // Mostrar la carta real
+						} else {
+							rutaImagen = `/static/img/cartas/zz.png`; // Mostrar la carta bocabajo
+						}
+
 						// Crear la ruta de la imagen
-						const rutaImagen = `/static/img/cartas/${carta}.png`;
+						//const rutaImagen = `/static/img/cartas/${carta}.png`;
+						
 						cartaElement.style.backgroundImage = `url(${rutaImagen})`;
 						cartaElement.style.backgroundSize = 'cover';
 						cartaElement.style.backgroundPosition = 'center';
@@ -2116,7 +2125,7 @@ button:active {
 
 					// Mensaje en consola para depuración
 					console.log(`¡La pareja ${equipo + 1} ha superado los 40 puntos! Juegos actualizados: ${data.juegos[equipo]}`);
-					if (data.juegos[equipo] === 1) {  // pongo uno para las pruebas
+					if (data.juegos[equipo] === 2) {  // pongo uno para las pruebas
 						mostrarPopup(mesa_id, mensajeCentral);
 					}
 				}
