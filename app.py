@@ -1,13 +1,11 @@
+from gevent import monkey
+monkey.patch_all()
+
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify, send_from_directory
 from flask_socketio import SocketIO, emit, join_room, leave_room, rooms
 from flask_session import Session
-#from app import create_app 
-#from flask import Flask, render_template,request,session,redirect,url_for, flash
 from flask_login import LoginManager,login_user, logout_user,login_required
-#from flask import session
 from datetime import datetime, timedelta
-#from Proyectos.MUS.envio_email.enviar_email import Ccorreo
-from app.models import db, User
 from db.usuarios import *
 from db.Conexion import *
 from envio_email.enviar_email import Ccorreo
@@ -15,32 +13,27 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import time
+import os
 import traceback
-#app = create_app() 
-#def create_app():
+from flask_sqlalchemy import SQLAlchemy
+import hashlib
 
 app = Flask(__name__)
-
-
-@app.route('/')
-def index():
-    #return "¡Hola Mundo desde Flask!"
-    #return render_template('index.html')
-    return render_template('index.html')
 
 app.secret_key = 'your_secret_key'
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_COOKIE_NAME'] = 'session_usuario'
-Session(app)
-#socketio = SocketIO(app, manage_session=False)
-socketio = SocketIO(app, async_mode='eventlet')  # Usa eventlet
-#socketio = SocketIO(app, async_mode='gevent')
 
-#Imprime la Ubicación 
-#print("Carpeta de plantillas:", app.template_folder)
-#db.init_app(app)
-#login_manager.init_app(app)
-#login_manager.login_view = "registro"
+# Configuración de conexión a PostgreSQL
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:Gordiano.1@localhost/musdocemas'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Inicializa la base de datos
+db = SQLAlchemy(app)
+
+Session(app)
+
+socketio = SocketIO(app, async_mode='eventlet')  # Usa eventlet
 
 # Lista para jugadores logados y mesas disponibles
 logged_players = []
@@ -51,6 +44,53 @@ salas = {}  # Diccionario para rastrear usuarios en cada sala
 table_counter = 1  # Contador global para las mesas
 puntos_juego = 40 # valor de puntos en un juego
 juegos_vaca = 2  # valor de juegos en una vaca
+
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/reglas')
+def reglas():
+    return render_template('reglas.html')
+
+@app.route('/noticias')
+def noticias():
+    print("DEBUG. Entra para lanzar noticias.html")
+    return render_template('noticias.html')
+
+@app.route('/politicaprivacidad')
+def politicaprivacidad():
+    print("DEBUG. Entra para lanzar politicaprivacidad.html")
+    return render_template('politicaprivacidad.html')
+
+@app.route('/terminosservicio')
+def terminosservicio():
+    print("DEBUG. Entra para lanzar terminosservicio.html")
+    return render_template('terminosservicio.html')
+
+@app.route('/tutorial')
+def tutorial():
+    return render_template('tutorial.html')
+
+@app.route('/ranking')
+def ranking():
+    return render_template('estadisticas.html')
+
+@app.route('/iniciosesion')
+def iniciosesion():
+    return render_template('identificacion.html')
+    
+@app.route('/registrarse')
+def registrarse():
+    return render_template(
+        'registro.html',
+        nombrep="",
+        usuario="",
+        password="",
+        correo="",
+        mostrar_verificacion = False 
+    )
 
 
 @app.route('/logout')
@@ -128,55 +168,13 @@ def enviar_correo():
     if session['usuario']:
         username = session['usuario']
         nombre = session['nombre']
-        avatar = session['avatar']
+        avatar = session.get('avatar', 'img/avatar.png')
         if session['usuario']:
             return render_template('entrarajugar.html',usuario=username,nombre=nombre,avatar=avatar)
     else:
         return redirect('/')
 
-@app.route('/reglas')
-def reglas():
-    return render_template('reglas.html')
-
-@app.route('/noticias')
-def noticias():
-    print("DEBUG. Entra para lanzar noticias.html")
-    return render_template('noticias.html')
-
-@app.route('/politicaprivacidad')
-def politicaprivacidad():
-    print("DEBUG. Entra para lanzar politicaprivacidad.html")
-    return render_template('politicaprivacidad.html')
-
-@app.route('/terminosservicio')
-def terminosservicio():
-    print("DEBUG. Entra para lanzar terminosservicio.html")
-    return render_template('terminosservicio.html')
-
-@app.route('/tutorial')
-def tutorial():
-    return render_template('tutorial.html')
-
-@app.route('/ranking')
-def ranking():
-    return render_template('estadisticas.html')
-
-@app.route('/iniciosesion')
-def iniciosesion():
-    return render_template('identificacion.html')
-    
-@app.route('/registrarse')
-def registrarse():
-    return render_template(
-        'registro.html',
-        nombrep="",
-        usuario="",
-        password="",
-        correo="",
-        mostrar_verificacion = False 
-    )
-
-    
+   
 @app.route('/perfilusuario')
 def perfilusuario():
     usuario = session.get('usuario')
@@ -185,7 +183,7 @@ def perfilusuario():
     print("DEBUG. Datos usuario leer:", datosusuario, " leidos: ", leidos)
 
     if leidos != 1:
-         flash('No se encontró el perfil')
+         print('No se encontró el perfil')
     else:
         nombre = datosusuario [0] [1]
         usuariobd = datosusuario [0] [2]
@@ -213,7 +211,7 @@ def update_perfil():
     nombreAvatar = session['avatar']  
     print("Avatar seleccionado:" + nombreAvatar + " usuario: " + alias + " nombre: " + nombre+ " correo: " + correo)
     if nombre=='' or correo == '' or alias=='' or nombreAvatar=='':
-        flash('Recuerda rellenar todos los campos')
+        print('Recuerda rellenar todos los campos')
         return redirect(url_for('perfilusuario'))
 
     CUsuarios.modificarPerfil(nombre,correo,nombreAvatar,alias)
@@ -222,7 +220,6 @@ def update_perfil():
 
 @app.route('/listar_avatares')
 def listar_avatares():
-    import os
     avatar_dir = os.path.join(app.static_folder, 'img', 'avatares')
     avatares = [f for f in os.listdir(avatar_dir) if f.endswith(('.png', '.jpg', '.jpeg'))]
     return render_template('lista_avatares.html', avatares=avatares)
@@ -270,19 +267,12 @@ def entrarajugar():
     username = session['usuario']
     avatar = session['avatar']
     nombre = session['nombre']    
-    print('DEBUG ENTRAR A JUGAR.: Usuario', username, " Nombre: ", nombre, " Avatar: ", avatar)
+    print('DEBUG ENTRAR A JUGAR.: Usuario', username, ' Nombre: ', nombre, ' Avatar: ', avatar)
     if session['usuario']:
         return render_template('entrarajugar.html',usuario=username,nombre=nombre,avatar=avatar)
     else:
-        flash("Debe identificarse primero para entrar a jugar.")
+        print("Debe identificarse primero para entrar a jugar.")
 
-#@app.route('/mesa_juego')
-#@login_required
-#def mesa_juego():
-#    mesa_id = request.args.get('mesa_id')
-#    username = session.get('username')
-#    asiento = request.args.get('asiento')
-#    return render_template('mesa_juego.html', mesa_id=mesa_id, username=username, asiento=asiento)
 
 @app.route('/mesa_juego/<mesa_id>')
 def mesa_juego(mesa_id):
@@ -312,7 +302,7 @@ def storage():
     alias =  request.form['alias']   
     password =  request.form['password']   
     correo =  request.form['email']  
-    avatar_url =  '/img/avatar.png'   
+    avatar_url =  'img/avatar.png'   
     verificado = False
     
     if nombrep=='' or correo == '' or alias=='' or password=='':
@@ -427,7 +417,7 @@ def handle_join(data):
     #mesa_id = data['mesa_id']
     username = data.get('username')
     usersesion = session['usuario']
-    print('Entra en Join de usuarios. Usuario connet: ', username, " usuario de la sesion: ", usersesion)
+    print('Entra en Join de usuarios. Usuario connet: ', username, ' usuario de la sesion: ', usersesion)
     if username and username not in logged_players:
         logged_players.append(username)
     emit('update_players', logged_players, broadcast=True)  # Envía la lista de usuarios a todos los clientes
@@ -679,7 +669,7 @@ def iniciar_partida(data):
     inicializar_partida(table_id)
     #print(f"El VALOR DEL ÍNDICE DEL mano es: {mano} )")
     try:
-        emit('partida_iniciada', { "mesa_id": table_id, "mesa": mesa}, room=table_id)
+        emit('partida_iniciada', { 'mesa_id': table_id, 'mesa': mesa}, to=table_id)
 
     except Exception as e:
         print(f"Error al iniciar la partida: {e}")
@@ -692,7 +682,7 @@ def iniciar_partida(data):
     inicializar_mesa(mesa, table_id)
     #print("Mesa:", mesa)
     print("Va a llamar a reiniciar_nueva_partida. table_id: ", table_id)
-    emit('reiniciar_nueva_partida', { "mesa_id": table_id}, room=table_id)
+    emit('reiniciar_nueva_partida', { 'mesa_id': table_id}, to=table_id)
 
 # Función que inicializa la mesa para nueva partida
 def inicializar_partida(table_id):
@@ -1008,7 +998,7 @@ def handle_pedir_cartas(data):
         #jugador_turno = jugadores[mesa["mano"]] 
         jugador_turno = jugadores[mesa["turno_actual"]] 
         print("Mesa después de pedir cartas:", mesa)
-        print(f"Va a hacer el emit a cartas pedidas con: ", {'jugador': jugador, 'turno_actual': jugador_turno, 'nuevas_cartas': manos[jugador]})
+        print(f'Va a hacer el emit a cartas pedidas con: ', {'jugador': jugador, 'turno_actual': jugador_turno, 'nuevas_cartas': manos[jugador]})
         # Emitir las nuevas cartas al jugador
         emit('cartas_pedidas', {'jugador': jugador, 'turno_actual': jugador_turno, 'contDescartados': mesa['musContador'], 'nuevas_cartas': manos[jugador]},  to=mesa_id)
         emit('mensaje_mesa', {'msg': f"{jugador} se descarta. Habla {jugador_turno}", 'username': 'Docemas'}, to=mesa_id)
@@ -1045,8 +1035,8 @@ def tratar_mus(data):
     musContador = mesa['musContador']
     jugador_turno = jugadores[mesa["turno_actual"]]
 
-    print("TRATAR MUS: El mano es : ", jugadores[mesa["mano"]], " indice mano: ", mesa["mano"])
-    print("TRATAR MUS: El turno es: ", jugadores[mesa["turno_actual"]], " indice actual: ", mesa["turno_actual"], " jugador antes: ", jugadorAntes)
+    print("TRATAR MUS: El mano es : ", jugadores[mesa['mano']], " indice mano: ", mesa['mano'])
+    print("TRATAR MUS: El turno es: ", jugadores[mesa['turno_actual']], " indice actual: ", mesa['turno_actual'], " jugador antes: ", jugadorAntes)
 
     #print("En tratar_mus Contador: ", musContador, " jugador antes  ", jugadorAntes, ", siguiente: ", jugador_turno, ", turno actual: ", mesa['turno_actual'])
     #print("Despues de actualizar: indice mano: ", mesa['mano'], " indica turno_actual: ",  mesa['turno_actual'])
@@ -1114,12 +1104,12 @@ def tratar_corto(data):
     mesa["apuesta_anterior"] = 0    
     tables[mesa_id] = mesa  # Guardar cambios
     reiniciar_hablado(mesa)
-    print("lance actual: ", mesa["lance_actual"])
+    print("lance actual: ", mesa['lance_actual'])
     print(f"TRATAR_CORTO: Va a hacer el emit comenzar ronda con: ", {'jugador turno': jugador_turno})    
     emit('comenzar_ronda', {'mesa_id': mesa_id,
                             'turno_actual': indice_mano, 
                             'jugador_turno': jugador_turno,
-                            'lance_actual': mesa["lance_actual"]}, 
+                            'lance_actual': mesa['lance_actual']}, 
                              to=mesa_id)
 
 ##########################################################################################################
@@ -1182,8 +1172,8 @@ def manejar_accion(data):
             mesa["estado_jugadores"][jugador]["ha_hablado"] = True
             reiniciar_hablado(mesa) 
             avanzar_turno(mesa)  # Turno para que el rival responda
-            emit('mensaje_mesa', {'msg': f"{jugador} {acciona}.", 'username': mesa["lance_actual"]}, to=mesa_id)
-            print("[DEBUG] Manejar Acción: Estado actualizado 1 desde ", mesa["lance_actual"], " - ", accion)
+            emit('mensaje_mesa', {'msg': f"{jugador} {acciona}.", 'username': mesa['lance_actual']}, to=mesa_id)
+            print("[DEBUG] Manejar Acción: Estado actualizado 1 desde ", mesa['lance_actual'], " - ", accion)
             emit('estado_actualizado', mesa, to=mesa_id)
             return 
         
@@ -1209,10 +1199,10 @@ def manejar_accion(data):
             mesa["estado_jugadores"][jugador]["ha_hablado"] = True
             print("[DEBUG] Manejar Acción: Estado de jugadores antes de verificar todos_han_pasado:")
             for jugador, estado in mesa["estado_jugadores"].items():
-                print(f"Debuf: manejar_accion: PASO en lance {mesa["lance_actual"]}. estado_jugadores: {jugador}: {estado}")
+                print(f"Debuf: manejar_accion: PASO en lance {mesa['lance_actual']}. estado_jugadores: {jugador}: {estado}")
 
             if todos_han_pasado(mesa):
-                emit('mensaje_mesa', {'msg': f"{mesa["jugadorAnterior"]} dice: {accion}.", 'username': mesa["lance_actual"]}, to=mesa_id)
+                emit('mensaje_mesa', {'msg': f"{mesa['jugadorAnterior']} dice: {accion}.", 'username': mesa['lance_actual']}, to=mesa_id)
                 print(f"[DEBUG] Manejar Acción: Todos los jugadores han pasado en {mesa['lance_actual']}. Finalizando el lance.")
                 ganador = None  # Se determina el ganador al final de la ronda 
                 registrar_lance(mesa, ganador, mesa["lance_actual"], mesa["apuesta"][indice_apuesta], 1)
@@ -1221,8 +1211,8 @@ def manejar_accion(data):
                 return
             else:
                 print("[DEBUG] No todos han pasado todavía. Avanzando turno.")
-                print("[DEBUG] Manejar Acción: Estado actualizado 2 desde ", mesa["lance_actual"], " - ", accion)
-                emit('mensaje_mesa', {'msg': f"{mesa["jugadorAnterior"]} dice: {accion}.", 'username': mesa["lance_actual"]}, to=mesa_id)
+                print("[DEBUG] Manejar Acción: Estado actualizado 2 desde ", mesa['lance_actual'], " - ", accion)
+                emit('mensaje_mesa', {'msg': f"{mesa['jugadorAnterior']} dice: {accion}.", 'username': mesa['lance_actual']}, to=mesa_id)
                 avanzar_turno(mesa)
                 emit('estado_actualizado', mesa, to=mesa_id)
                 return
@@ -1238,11 +1228,11 @@ def manejar_accion(data):
             mesa["jugadorApuesta"] = jugador
             mesa["apuesta"][indice_apuesta] += envido  # Incrementa la apuesta
             mesa["estado_jugadores"][jugador]["ha_hablado"] = True
-            print(f"[DEBUG] Manejar Acción:  {jugador} envida. Apuesta actual: {mesa["apuesta"][indice_apuesta]}")
+            print(f"[DEBUG] Manejar Acción:  {jugador} envida. Apuesta actual: {mesa['apuesta'][indice_apuesta]}")
             reiniciar_hablado(mesa) 
             avanzar_turno(mesa)  # Turno para el siguiente jugador con pares
-            print("[DEBUG] Manejar Acción: Estado actualizado 3 desde ", mesa["lance_actual"], " - ", accion)
-            emit('mensaje_mesa', {'msg': f"{jugador} {acciona}.", 'username': mesa["lance_actual"]}, to=mesa_id)
+            print("[DEBUG] Manejar Acción: Estado actualizado 3 desde ", mesa['lance_actual'], " - ", accion)
+            emit('mensaje_mesa', {'msg': f"{jugador} {acciona}.", 'username': mesa['lance_actual']}, to=mesa_id)
             emit('estado_actualizado', mesa, to=mesa_id)
             return
 
@@ -1253,8 +1243,8 @@ def manejar_accion(data):
             else: 
                 # El jugador acepta la apuesta; se cierra el lance
                 mesa["acciones"][2] = accion
-                emit('mensaje_mesa', {'msg': f"{jugador} ve el envite.", 'username': mesa["lance_actual"]}, to=mesa_id)
-                print(f"[DEBUG] Manejar Acción: {jugador} ve la apuesta de {mesa["apuesta"][indice_apuesta]}. Cerrando el lance.")
+                emit('mensaje_mesa', {'msg': f"{jugador} ve el envite.", 'username': mesa['lance_actual']}, to=mesa_id)
+                print(f"[DEBUG] Manejar Acción: {jugador} ve la apuesta de {mesa['apuesta'][indice_apuesta]}. Cerrando el lance.")
                 ganador = None  # Se determina el ganador al final de la ronda salvo que sea Órdago
                 registrar_lance(mesa, ganador, "Pares", mesa["apuesta"][indice_apuesta], 0)
                 reiniciar_hablado(mesa)
@@ -1265,7 +1255,7 @@ def manejar_accion(data):
             mesa["estado_jugadores"][jugador]["ha_hablado"] = True
             # Si todos los jugadores con pares han pasado, termina el lance
             if todos_han_pasado(mesa):
-                emit('mensaje_mesa', {'msg': f"{mesa["jugadorAnterior"]} dice: {accion}.", 'username': mesa["lance_actual"]}, to=mesa_id)
+                emit('mensaje_mesa', {'msg': f"{mesa['jugadorAnterior']} dice: {accion}.", 'username': mesa['lance_actual']}, to=mesa_id)
                 print(f"[DEBUG] Manejar Acción: PASO, Todos los jugadores han pasado en {mesa['lance_actual']}. Finalizando el lance.")
                 ganador = None  # Se determina el ganador al final de la ronda 
                 registrar_lance(mesa, ganador, mesa["lance_actual"], mesa["apuesta"][indice_apuesta], 1)
@@ -1276,8 +1266,8 @@ def manejar_accion(data):
                 print("[DEBUG] No todos han pasado todavía. Avanzando turno.")
                 # Si no, simplemente avanza el turno per tiene que ser al siguiente con pares
                 avanzar_turno(mesa)
-                print("[DEBUG] Manejar Acción: Estado actualizado 4 desde ", mesa["lance_actual"], " - ", accion)
-                emit('mensaje_mesa', {'msg': f"{jugador} dice: {accion}.", 'username': mesa["lance_actual"]}, to=mesa_id)
+                print("[DEBUG] Manejar Acción: Estado actualizado 4 desde ", mesa['lance_actual'], " - ", accion)
+                emit('mensaje_mesa', {'msg': f"{jugador} dice: {accion}.", 'username': mesa['lance_actual']}, to=mesa_id)
                 emit('estado_actualizado', mesa, to=mesa_id)
                 return
     # 
@@ -1296,8 +1286,8 @@ def manejar_accion(data):
             print(f"[DEBUG] Manejar Acción: {jugador} envida. Apuesta actual: {mesa['apuesta']}")
             reiniciar_hablado(mesa) 
             avanzar_turno(mesa)  # Turno para el siguiente jugador con juego
-            print("[DEBUG] Manejar Acción: Estado actualizado 5 desde ", mesa["lance_actual"], " - ", accion)
-            emit('mensaje_mesa', {'msg': f"{jugador} {acciona}.", 'username': mesa["lance_actual"]}, to=mesa_id)
+            print("[DEBUG] Manejar Acción: Estado actualizado 5 desde ", mesa['lance_actual'], " - ", accion)
+            emit('mensaje_mesa', {'msg': f"{jugador} {acciona}.", 'username': mesa['lance_actual']}, to=mesa_id)
             emit('estado_actualizado', mesa, to=mesa_id)
             return
 
@@ -1308,10 +1298,10 @@ def manejar_accion(data):
             else: 
                 # El jugador acepta la apuesta; se cierra el lance
                 mesa["acciones"][3] = accion
-                emit('mensaje_mesa', {'msg': f"{jugador} ve el envite.", 'username': mesa["lance_actual"]}, to=mesa_id)
-                print(f"[DEBUG] Manejar Acción: {jugador} ve la apuesta de {mesa["apuesta"][indice_apuesta]}. Cerrando el lance.")
+                emit('mensaje_mesa', {'msg': f"{jugador} ve el envite.", 'username': mesa['lance_actual']}, to=mesa_id)
+                print(f"[DEBUG] Manejar Acción: {jugador} ve la apuesta de {mesa['apuesta'][indice_apuesta]}. Cerrando el lance.")
                 ganador = None  # Se determina el ganador al final de la ronda salvo que sea Órdago
-                registrar_lance(mesa, ganador, "Juego", mesa["apuesta"][indice_apuesta], 0)
+                registrar_lance(mesa, ganador, "Juego", mesa['apuesta'][indice_apuesta], 0)
                 reiniciar_hablado(mesa)
                 pasar_a_siguiente_lance(mesa)
                 return
@@ -1320,7 +1310,7 @@ def manejar_accion(data):
             mesa["estado_jugadores"][jugador]["ha_hablado"] = True
             # Si todos los jugadores con juego han pasado, termina el lance
             if todos_han_pasado(mesa):
-                emit('mensaje_mesa', {'msg': f"{mesa["jugadorAnterior"]} dice: {accion}.", 'username': mesa["lance_actual"]}, to=mesa_id)
+                emit('mensaje_mesa', {'msg': f"{mesa['jugadorAnterior']} dice: {accion}.", 'username': mesa['lance_actual']}, to=mesa_id)
                 print(f"[DEBUG] Manejar Acción: PASO. Todos los jugadores con juego han pasado en {mesa['lance_actual']}. Finalizando el lance.")
                 ganador = None  # Se determina el ganador al final de la ronda 
                 registrar_lance(mesa, ganador, mesa["lance_actual"], mesa["apuesta"][indice_apuesta], 1)
@@ -1331,8 +1321,8 @@ def manejar_accion(data):
                 print("[DEBUG] No todos han pasado todavía. Avanzando turno.")
                 # Si no, simplemente avanza el turno per tiene que ser al siguiente con juego
                 avanzar_turno(mesa)
-                print("[DEBUG] Manejar Acción: Estado actualizado 6 desde ", mesa["lance_actual"], " - ", accion)
-                emit('mensaje_mesa', {'msg': f"{jugador} dice: {accion}.", 'username': mesa["lance_actual"]}, to=mesa_id)
+                print("[DEBUG] Manejar Acción: Estado actualizado 6 desde ", mesa['lance_actual'], " - ", accion)
+                emit('mensaje_mesa', {'msg': f"{jugador} dice: {accion}.", 'username': mesa['lance_actual']}, to=mesa_id)
                 emit('estado_actualizado', mesa, to=mesa_id)
                 return
 
@@ -1348,8 +1338,8 @@ def manejar_accion(data):
 
     # Guardar cambios en la mesa
     tables[mesa_id] = mesa
-    print("[DEBUG] Manejar Acción: Va a emitir estado actualizado: siguiente turno:", mesa["turno_actual"], " lance: ", mesa["lance_actual"])
-    print("[DEBUG] Manejar Acción: Estado actualizado 7 desde ", mesa["lance_actual"], " - ", accion)
+    print("[DEBUG] Manejar Acción: Va a emitir estado actualizado: siguiente turno:", mesa['turno_actual'], " lance: ", mesa['lance_actual'])
+    print("[DEBUG] Manejar Acción: Estado actualizado 7 desde ", mesa['lance_actual'], " - ", accion)
     # Enviar estado actualizado a todos los clientes
     emit('estado_actualizado', mesa, to=mesa_id)
 
@@ -1391,7 +1381,7 @@ def todos_han_pasado(mesa):
         jugadores_relevantes = mesa["pareja_contraria"]
 
     print("[DEBUG] todos_han_pasado. Jugadores relevantes: ", jugadores_relevantes)
-    print("[DEBUG] todos_han_pasado. Estado de cada jugador:", {j: mesa["estado_jugadores"][j] for j in jugadores_relevantes})
+    print("[DEBUG] todos_han_pasado. Estado de cada jugador:", {j: mesa['estado_jugadores'][j] for j in jugadores_relevantes})
 
     # Verifica que todos los jugadores relevantes hayan pasado
     return all(
@@ -1421,7 +1411,7 @@ def todos_jugadores_han_hablado(mesa):
         jugadores_relevantes = mesa["pareja_contraria"]
 
     print("[DEBUG] todos_han_hablado. Jugadores relevantes: ", jugadores_relevantes)
-    print("[DEBUG] todos_han_hablado. Estado de cada jugador:", {j: mesa["estado_jugadores"][j] for j in jugadores_relevantes})
+    print("[DEBUG] todos_han_hablado. Estado de cada jugador:", {j: mesa['estado_jugadores'][j] for j in jugadores_relevantes})
 
     # Verifica que todos los jugadores relevantes hayan hablado
     return all(
@@ -1439,7 +1429,7 @@ def avanzar_turno(mesa):
     indice_apuesta = mesa['lances'].index(mesa["lance_actual"])
     envite = mesa["apuesta"][indice_apuesta]
     
-    print(f"[DEBUG] Avanzar_turno. Jugador: {jugador_actual}, Lance: {mesa["lance_actual"]}, acción: {mesa["accion"]}")
+    print(f"[DEBUG] Avanzar_turno. Jugador: {jugador_actual}, Lance: {mesa['lance_actual']}, acción: {mesa['accion']}")
     # Función para obtener la pareja de un jugador
     def obtener_pareja(jugador):
         idx = mesa["jugadores"].index(jugador)
@@ -1456,7 +1446,7 @@ def avanzar_turno(mesa):
             if obtener_pareja(jugador) == pareja_contraria
         ]
         mesa["pareja_contraria"] = jugadores_contrarios 
-        print(f"[DEBUG] Avanzar_turno. Lance: {mesa["lance_actual"]}, acción: {mesa["accion"]} Jugadores contrarios: {jugadores_contrarios}")
+        print(f"[DEBUG] Avanzar_turno. Lance: {mesa['lance_actual']}, acción: {mesa['accion']} Jugadores contrarios: {jugadores_contrarios}")
     elif envite > 0:
         jugadores_contrarios = mesa["pareja_contraria"]
     else:
@@ -1478,7 +1468,7 @@ def avanzar_turno(mesa):
     else:
         jugadores_validos = jugadores_contrarios
 
-    print(f"[DEBUG] Avanzar_turno. Lance: {mesa["lance_actual"]}, acción: {mesa["accion"]} Jugadores válidos: {jugadores_validos}")
+    print(f"[DEBUG] Avanzar_turno. Lance: {mesa['lance_actual']}, acción: {mesa['accion']} Jugadores válidos: {jugadores_validos}")
 
     # Si no hay jugadores válidos, pasar al siguiente lance
     if not jugadores_validos:
@@ -1510,7 +1500,7 @@ def reiniciar_hablado(mesa):
         mesa["estado_jugadores"] = {
             jugador: {"ha_hablado": False} for jugador in mesa["jugadores"]
         }
-        print("Estado de jugadores inicializado:", mesa["estado_jugadores"])
+        print("Estado de jugadores inicializado:", mesa['estado_jugadores'])
     else:
         raise KeyError("La clave 'jugadores' no está presente en la mesa.")
 
@@ -1520,7 +1510,7 @@ def pasar_a_siguiente_lance(mesa):
     Avanza al siguiente lance en el orden predefinido.
     Si se trata del lance de pares, evalúa las condiciones especiales.
     """
-    print("[DEBUG] Entra en pasar a siguiente lance: ", mesa["lance_actual"])
+    print("[DEBUG] Entra en pasar a siguiente lance: ", mesa['lance_actual'])
     mesa_id = mesa["nombre"]
     lances = ["Grande", "Chica", "Pares", "Juego", "Punto"]
     indice_actual = lances.index(mesa["lance_actual"])
@@ -1543,17 +1533,17 @@ def pasar_a_siguiente_lance(mesa):
         print(f"Se pasa al lance: {mesa['lance_actual']} y se reinicia hablado.")
 
         if mesa["lance_actual"] == "Grande":
-            print("[DEBUG] Pasar_a_siguiente_lance: Estado actualizado 8 desde ", mesa["lance_actual"])
+            print("[DEBUG] Pasar_a_siguiente_lance: Estado actualizado 8 desde ", mesa['lance_actual'])
             emit('estado_actualizado', mesa, to=mesa_id)
 
         if mesa["lance_actual"] == "Chica":
-            print("[DEBUG] Pasar_a_siguiente_lance: Estado actualizado 9 desde ", mesa["lance_actual"])
+            print("[DEBUG] Pasar_a_siguiente_lance: Estado actualizado 9 desde ", mesa['lance_actual'])
             emit('estado_actualizado', mesa, to=mesa_id)
 
         if mesa["lance_actual"] == "Pares":
-            print("[DEBUG] Pasar_a_siguiente_lance: Estado actualizado 10 desde ", mesa["lance_actual"])
+            print("[DEBUG] Pasar_a_siguiente_lance: Estado actualizado 10 desde ", mesa['lance_actual'])
             emit('estado_actualizado', mesa, to=mesa_id)
-            emit('bloquear_mesa_botones', mesa["lance_actual"], to=mesa_id)
+            emit('bloquear_mesa_botones', mesa['lance_actual'], to=mesa_id)
             print("[DEBUG] Comenzando el lance de pares.")
             inicializar_pares(mesa)
             # Analizar las manos y determinar quién tiene pares
@@ -1571,8 +1561,8 @@ def pasar_a_siguiente_lance(mesa):
             jugadorturno = mesa["jugadores"][turno_actual]
  
              # Emitir a todos los clientes la información de pares y enviar jugador primero con pares para posicionar turno
-            print("[DEBUG] Se hace el emit de pares confirmados: ", mesa["pares_confirmados"], " es el turno de :", jugadorturno, " hay ", total_pares, " jugadores con pares.", " contrarias: ", contrarias)
-            emit("pares_confirmados", {'resultados_pares': mesa["pares_confirmados"], 'lance': mesa["lance_actual"], 'total_pares': total_pares, 'turno_actual': turno_actual, 'contrarias': contrarias, 'puntos': mesa['puntos']}, broadcast=True)
+            print("[DEBUG] Se hace el emit de pares confirmados: ", mesa['pares_confirmados'], " es el turno de :", jugadorturno, " hay ", total_pares, " jugadores con pares.", " contrarias: ", contrarias)
+            emit("pares_confirmados", {'resultados_pares': mesa['pares_confirmados'], 'lance': mesa['lance_actual'], 'total_pares': total_pares, 'turno_actual': turno_actual, 'contrarias': contrarias, 'puntos': mesa['puntos']}, to=mesa_id)
             socketio.sleep(1)
             """
             print("[DEBUG] Pongo sleep de 5 segundos para que canten los pares.")   
@@ -1587,26 +1577,26 @@ def pasar_a_siguiente_lance(mesa):
 
             if (total_pares == 0):
                 mesa["lance_actual"] = "Juego"
-                emit('mensaje_mesa', {'msg': f"Ningún jugador tiene pares.", 'username': mesa["lance_actual"]}, to=mesa_id)
+                emit('mensaje_mesa', {'msg': f"Ningún jugador tiene pares.", 'username': mesa['lance_actual']}, to=mesa_id)
             if (total_pares == 1):
                 mesa["lance_actual"] = "Juego"
-                emit('mensaje_mesa', {'msg': f"Solo hay un jugador con pares.", 'username': mesa["lance_actual"]}, to=mesa_id)
+                emit('mensaje_mesa', {'msg': f"Solo hay un jugador con pares.", 'username': mesa['lance_actual']}, to=mesa_id)
             if (total_pares == 2):
                 if (contrarias):
-                    emit('mensaje_mesa', {'msg': f"Comienza el lance de pares. Es el turno de {jugadorturno}", 'username': mesa["lance_actual"]}, to=mesa_id)
+                    emit('mensaje_mesa', {'msg': f"Comienza el lance de pares. Es el turno de {jugadorturno}", 'username': mesa['lance_actual']}, to=mesa_id)
                 else:
                     mesa["lance_actual"] = "Juego"
                     emit('mensaje_mesa', {'msg': f"Solo una pareja tiene pares.", 'username': 'Docemas'}, to=mesa_id)
             if (total_pares == 3):
-                emit('mensaje_mesa', {'msg': f"Comienza el lance de pares. Es el turno de {jugadorturno}", 'username': mesa["lance_actual"]}, to=mesa_id)
+                emit('mensaje_mesa', {'msg': f"Comienza el lance de pares. Es el turno de {jugadorturno}", 'username': mesa['lance_actual']}, to=mesa_id)
             if (total_pares == 4):
-                emit('mensaje_mesa', {'msg': f"Comienza el lance de pares. Es el turno de {jugadorturno}", 'username': mesa["lance_actual"]}, to=mesa_id)
+                emit('mensaje_mesa', {'msg': f"Comienza el lance de pares. Es el turno de {jugadorturno}", 'username': mesa['lance_actual']}, to=mesa_id)
 
 
         if mesa["lance_actual"] == "Juego":
-            print("[DEBUG] Pasar_a_siguiente_lance: Estado actualizado 11 desde ", mesa["lance_actual"])
+            print("[DEBUG] Pasar_a_siguiente_lance: Estado actualizado 11 desde ", mesa['lance_actual'])
             emit('estado_actualizado', mesa, to=mesa_id)     
-            emit('bloquear_mesa_botones', mesa["lance_actual"], to=mesa_id)       
+            emit('bloquear_mesa_botones', mesa['lance_actual'], to=mesa_id)       
             print("[DEBUG] Comenzando el lance de juego.")
             inicializar_juego(mesa)  # Inicializa las variables necesarias para este lance
             #procesar_lance_juego(mesa)
@@ -1620,11 +1610,11 @@ def pasar_a_siguiente_lance(mesa):
             print("[DEBUG] Juego. turno_actual: ", indiceJuego)
             if (cantidadJ == 2):
                 if (contrariasJ):
-                    emit('mensaje_mesa', {'msg': f"Comienza el lance de juego. Es el turno de {jugadorturno}", 'username': mesa["lance_actual"]}, to=mesa_id)
+                    emit('mensaje_mesa', {'msg': f"Comienza el lance de juego. Es el turno de {jugadorturno}", 'username': mesa['lance_actual']}, to=mesa_id)
             if (cantidadJ == 3):
-                emit('mensaje_mesa', {'msg': f"Comienza el lance de juego. Es el turno de {jugadorturno}", 'username': mesa["lance_actual"]}, to=mesa_id)
+                emit('mensaje_mesa', {'msg': f"Comienza el lance de juego. Es el turno de {jugadorturno}", 'username': mesa['lance_actual']}, to=mesa_id)
             if (cantidadJ == 4):
-                emit('mensaje_mesa', {'msg': f"Comienza el lance de juego. Es el turno de {jugadorturno}", 'username': mesa["lance_actual"]}, to=mesa_id)
+                emit('mensaje_mesa', {'msg': f"Comienza el lance de juego. Es el turno de {jugadorturno}", 'username': mesa['lance_actual']}, to=mesa_id)
 
             """
             print("[DEBUG] Pongo sleep de 5 segundos para que canten el juego.")
@@ -1637,19 +1627,19 @@ def pasar_a_siguiente_lance(mesa):
             print("La hora actual es después de 5 segundos: ", hora_actual)   
             """
             # Emitir a todos los clientes la información de juego
-            print("[DEBUG] Se hace el emit de juego confirmado: ", mesa["estado_juego"], " jugadorturno: ", jugadorturno, " indicaJuego: ", indiceJuego, " cantidadj: ", cantidadJ, " contrarias: ", contrariasJ)
-            emit("juego_confirmado", {'resultado_juego': mesa["estado_juego"], 'total_juego': cantidadJ, 'turno_actual': jugadorturno, 'contrarias': contrariasJ}, to=mesa_id)
+            print("[DEBUG] Se hace el emit de juego confirmado: ", mesa['estado_juego'], " jugadorturno: ", jugadorturno, " indicaJuego: ", indiceJuego, " cantidadj: ", cantidadJ, " contrarias: ", contrariasJ)
+            emit("juego_confirmado", {'resultado_juego': mesa['estado_juego'], 'total_juego': cantidadJ, 'turno_actual': jugadorturno, 'contrarias': contrariasJ}, to=mesa_id)
             socketio.sleep(3)
 
         if mesa["lance_actual"] == "Juego":
             if (cantidadJ == 0):
-                emit('mensaje_mesa', {'msg': f"Ningún jugador tiene juego. Pasamos al Punto.", 'username': mesa["lance_actual"]}, to=mesa_id)
+                emit('mensaje_mesa', {'msg': f"Ningún jugador tiene juego. Pasamos al Punto.", 'username': mesa['lance_actual']}, to=mesa_id)
                 mesa["lance_actual"] = "Punto"
             elif (cantidadJ == 1):
-                emit('mensaje_mesa', {'msg': f"Solo {jugadorturno} tiene juego. Finaliza la ronda.", 'username': mesa["lance_actual"]}, to=mesa_id)
+                emit('mensaje_mesa', {'msg': f"Solo {jugadorturno} tiene juego. Finaliza la ronda.", 'username': mesa['lance_actual']}, to=mesa_id)
                 finalizar_ronda(mesa)
             elif (cantidadJ == 2 and not contrariasJ):
-                    emit('mensaje_mesa', {'msg': f"Solo una pareja tiene juego. Finaliza la ronda.", 'username': mesa["lance_actual"]}, to=mesa_id)
+                    emit('mensaje_mesa', {'msg': f"Solo una pareja tiene juego. Finaliza la ronda.", 'username': mesa['lance_actual']}, to=mesa_id)
                     finalizar_ronda(mesa)
 
         if mesa["lance_actual"] == "Punto":           
@@ -1661,7 +1651,7 @@ def pasar_a_siguiente_lance(mesa):
                     emit('mensaje_mesa', {'msg': f"Comienza el lance de Punto. Es el turno de {jugadorturno}", 'username': mesa["lance_actual"]}, to=mesa_id)
                     # Emitir a todos los clientes la información de pares y enviar jugador primero con pares para posicionar turno
                     print("[DEBUG] Se hace el emit de Punto. Es el turno de :", jugadorturno)        
-            print("[DEBUG] Pasar_a_siguiente_lance: Estado actualizado 12 desde ", mesa["lance_actual"])
+            print("[DEBUG] Pasar_a_siguiente_lance: Estado actualizado 12 desde ", mesa['lance_actual'])
             emit('estado_actualizado', mesa, to=mesa_id)
     else:
         finalizar_ronda(mesa)  # Si se completaron todos los lances, finalizar la ronda
@@ -1790,7 +1780,7 @@ def inicializar_pares(mesa):
     """
     print("[DEBUG] Entra en inicializar pares.")
     mesa["pares_confirmados"] = {jugador: None for jugador in mesa["jugadores"]}
-    print("[DEBUG] Estado de pares inicializado:", mesa["pares_confirmados"])
+    print("[DEBUG] Estado de pares inicializado:", mesa['pares_confirmados'])
 
 def inicializar_juego(mesa):
     print("[DEBUG] Entra en inicializar juego.")
@@ -1907,7 +1897,7 @@ def determinar_ganador(mesa):
     elif lance == "Chica":
         return max(mesa["jugadores"], key=lambda j: evaluar_chica(manos[j]))
 
-    print("Determinar ganador. lance actual: ", mesa["lance_actual"])
+    print("Determinar ganador. lance actual: ", mesa['lance_actual'])
 
 
 def registrar_lance(mesa, ganador, lance, apuesta_actual, estado_apuesta):
@@ -1931,11 +1921,11 @@ def registrar_lance(mesa, ganador, lance, apuesta_actual, estado_apuesta):
         amarracos = 1
 
     if apuesta_actual > 0 and estado_apuesta == 1: # ha habido envite y/o reemvite y no se ha visto
-        print("[DEBUG] Entra en registrar lance de {lance}. Jugador Apuesta: ", mesa["jugadorApuesta"], " pareja1: ", pareja1)
+        print("[DEBUG] Entra en registrar lance de {lance}. Jugador Apuesta: ", mesa['jugadorApuesta'], " pareja1: ", pareja1)
         if mesa["jugadorApuesta"] in pareja1:
             # La pareja contraria es pareja1, sumamos punto en el índice 0
             mesa["puntos"][0] += amarracos
-            emit('mensaje_mesa', {'msg': f"¡La pareja 1 gana 1 punto a {lance}!", 'username': mesa["lance_actual"]}, to=mesa_id)
+            emit('mensaje_mesa', {'msg': f"¡La pareja 1 gana 1 punto a {lance}!", 'username': mesa['lance_actual']}, to=mesa_id)
             if lance == "Grande":
                 mesa["grande"][0] += amarracos
             elif lance == "Chica":
@@ -1950,7 +1940,7 @@ def registrar_lance(mesa, ganador, lance, apuesta_actual, estado_apuesta):
         else:
             # La pareja contraria es pareja2, sumamos punto en el índice 0
             mesa["puntos"][1] += amarracos
-            emit('mensaje_mesa', {'msg': f"¡La pareja 2 gana 1 punto a {lance}!", 'username': mesa["lance_actual"]}, to=mesa_id)
+            emit('mensaje_mesa', {'msg': f"¡La pareja 2 gana 1 punto a {lance}!", 'username': mesa['lance_actual']}, to=mesa_id)
             if lance == "Grande":
                 mesa["grande"][1] += amarracos
             elif lance == "Chica":
@@ -1962,7 +1952,7 @@ def registrar_lance(mesa, ganador, lance, apuesta_actual, estado_apuesta):
             elif lance == "Punto":
                 mesa["punto"][1] += amarracos  
     #aqui
-    print("[DEBUG] Entra en registrar lance. Valor de Puntos: ", mesa["puntos"])
+    print("[DEBUG] Entra en registrar lance. Valor de Puntos: ", mesa['puntos'])
     mesa["jugadorApuesta"] = None
     
     mesa["apuesta_anterior"] = 0
@@ -1976,7 +1966,7 @@ def registrar_lance(mesa, ganador, lance, apuesta_actual, estado_apuesta):
     if lance == "Pares" and ganador is None:
         # Determinar qué pareja tiene pares
         jugadores_con_pares = [
-            jugador for jugador, tiene_pares in mesa["pares_confirmados"].items() if tiene_pares
+            jugador for jugador, tiene_pares in mesa['pares_confirmados'].items() if tiene_pares
         ]
         pares_pareja1 = sum(1 for jugador in jugadores_con_pares if jugador in pareja1)
         pares_pareja2 = sum(1 for jugador in jugadores_con_pares if jugador in pareja2)
@@ -2045,16 +2035,16 @@ def emitir_actualizar_interfaz(mesa):
 
    # Emitir actualizar_interfaz_rondao
     emit("actualizar_interfaz_ronda", {
-        "turno_actual": mesa["mano"],        
-        "jugadorAnterior": mesa["jugadorAnterior"],  
-        "puntos": mesa["puntos"],
-        "juegos": mesa["juegos"],        
-        "grande": mesa["grande"],
-        "chica": mesa["chica"],        
-        "pares": mesa["pares"],
-        "juego": mesa["juego"],  
-        "punto": mesa["punto"],
-        "manos": mesa["manos"],
+        "turno_actual": mesa['mano'],        
+        "jugadorAnterior": mesa['jugadorAnterior'],  
+        "puntos": mesa['puntos'],
+        "juegos": mesa['juegos'],        
+        "grande": mesa['grande'],
+        "chica": mesa['chica'],        
+        "pares": mesa['pares'],
+        "juego": mesa['juego'],  
+        "punto": mesa['punto'],
+        "manos": mesa['manos'],
         "apuesta": apuesta
     }, to=mesa_id)
 
@@ -2069,7 +2059,7 @@ def verificar_finaliza_juego_partida(mesa):
         if puntos >= puntos_juego:
             mesa["juegos"][equipo] += 1  
             mesa["puntos"] = [0,0]  
-            emit('mensaje_mesa', {'msg': f"¡La pareja {equipo + 1} ha ganado el juego con {puntos} puntos!", 'username': mesa["lance_actual"]}, to=mesa_id)
+            emit('mensaje_mesa', {'msg': f"¡La pareja {equipo + 1} ha ganado el juego con {puntos} puntos!", 'username': mesa['lance_actual']}, to=mesa_id)
             print(f"[DEBUG] El juego ha terminado. Ganadores: Pareja {equipo + 1}")
 
     # Validar si alguna pareja supera el valor de la variable global juegos_vaca
@@ -2747,14 +2737,21 @@ def procesar_lance_juego(mesa):
 def debug_manos(mesa):
     if not isinstance(mesa["manos"], dict):
         print("[DEBUG] mesa['manos'] se modificó:")
-        print("Contenido actual:", mesa["manos"])
+        print("Contenido actual:", mesa['manos'])
         print("Stack trace:")
         traceback.print_stack()
 
 #########################
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8000)
+    print("🚀 Servidor corriendo en http://localhost:8000")
+    socketio.run(app, host='0.0.0.0', port=8000, debug=True)
+
+#if __name__ == '__main__':
+#    socketio.run(app, host='0.0.0.0', port=8000)
+
+#if __name__ == '__main__':
+#   app.run(host='0.0.0.0', port=8000)
 
 '''
 if __name__ == '__main__':

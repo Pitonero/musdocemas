@@ -1,125 +1,141 @@
-#from Conexion import *
-import hashlib
-from db.Conexion import *
-from db.registro import *
+import psycopg2
+from psycopg2 import Error
+from db.Conexion import CConexion
 
 class CUsuarios:
 
-    def mostrarUsuarios():    
-        try: 
+    @staticmethod
+    def mostrarUsuarios():
+        try:
             cone = CConexion.ConexionBaseDeDatos()
             cursor = cone.cursor()
-            cursor.execute ("select * from Usuarios;")
+            cursor.execute("SELECT * FROM Usuarios;")
             miResultado = cursor.fetchall()
-            cone.commit()
             cone.close()
             return miResultado
 
-        except mysql.connector.Error as error:
-            print("Error al mostrar datos {}".format(error))
+        except Error as error:
+            print(f"Error al mostrar datos: {error}")
 
-    def insertarUsuario(nombre_usuario,alias,email,password_hash,avatar_url,fecha_registro,verificado,codigo_activacion):
+    @staticmethod
+    def insertarUsuario(nombre_usuario, alias, email, password_hash, avatar_url, fecha_registro, verificado, codigo_activacion):
         try:
             cone = CConexion.ConexionBaseDeDatos()
             cursor = cone.cursor()
-            sql = "insert into usuarios values( null, %s, %s, %s, %s, %s, %s, %s, %s);"
-            # la variable valores tiene que ser una tupla (array que no se puede modificar)
-            # como minima expresion es : (valor,). La coma hace que sea una tupla inmutable.
-            valores = (nombre_usuario,alias,email,password_hash,avatar_url,fecha_registro,verificado,codigo_activacion)
-            cursor.execute(sql,valores)
+            sql = """
+                INSERT INTO Usuarios (nombre_usuario, alias, email, password_hash, avatar_url, fecha_registro, verificado, codigo_activacion)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
+            """
+            valores = (nombre_usuario, alias, email, password_hash, avatar_url, fecha_registro, verificado, codigo_activacion)
+            cursor.execute(sql, valores)
             cone.commit()
-            print("DEBUG: ALTA USUARIO: ", cursor.rowcount, "Registro insertado")
+            print(f"DEBUG: ALTA USUARIO: {cursor.rowcount} registro insertado")
             cone.close()
 
-        except mysql.connector.Error as error:
-            print("error de introduccion de datos {}".format(error))
+        except Error as error:
+            print(f"Error al insertar usuario: {error}")
 
-    def modificarUsuario(idUsuario, nombre_usuario,alias,email,password_hash,avatar_url,fecha_registro):
+    @staticmethod
+    def modificarUsuario(idUsuario, nombre_usuario, alias, email, password_hash, avatar_url, fecha_registro):
         try:
             cone = CConexion.ConexionBaseDeDatos()
             cursor = cone.cursor()
-            sql = "update usuarios set nombre_usuario = %s, alias = %s, email = %s, password_hash = %s, avatar_url = %s, fecha_registro = %s where usuario_id = %s;"
-            valores = (nombre_usuario,alias,email,password_hash,avatar_url,fecha_registro,idUsuario)
-            cursor.execute(sql,valores)
+            sql = """
+                UPDATE Usuarios
+                SET nombre_usuario = %s, alias = %s, email = %s, password_hash = %s, avatar_url = %s, fecha_registro = %s
+                WHERE usuario_id = %s;
+            """
+            valores = (nombre_usuario, alias, email, password_hash, avatar_url, fecha_registro, idUsuario)
+            cursor.execute(sql, valores)
             cone.commit()
-            print("DEBUG: MODIFICACION USUARIO: ",cursor.rowcount, "Registro actualizado")
+            print(f"DEBUG: MODIFICACION USUARIO: {cursor.rowcount} registro actualizado")
             cone.close()
 
-        except mysql.connector.Error as error:
-            print("error al actualizar datos {}".format(error))
+        except Error as error:
+            print(f"Error al modificar usuario: {error}")
 
-    def modificarPerfil(nombre_usuario,email,avatar_url,usuario):
+    @staticmethod
+    def modificarPerfil(nombre_usuario, email, avatar_url, usuario):
         try:
             cone = CConexion.ConexionBaseDeDatos()
             cursor = cone.cursor()
-            sql = "update usuarios set nombre_usuario = %s, email = %s, avatar_url = %s where alias = %s;"
-            valores = (nombre_usuario,email,avatar_url,usuario)
-            cursor.execute(sql,valores)
+            sql = """
+                UPDATE Usuarios
+                SET nombre_usuario = %s, email = %s, avatar_url = %s
+                WHERE alias = %s;
+            """
+            valores = (nombre_usuario, email, avatar_url, usuario)
+            cursor.execute(sql, valores)
             cone.commit()
-            print("DEBUG: MODIFICACION PERFIL: ", cursor.rowcount, "Registro actualizado")
+            print(f"DEBUG: MODIFICACION PERFIL: {cursor.rowcount} registro actualizado")
             cone.close()
 
-        except mysql.connector.Error as error:
-            print("error al actualizar datos {}".format(error))
+        except Error as error:
+            print(f"Error al modificar perfil: {error}")
 
+    @staticmethod
     def modificarActivacion(usuario):
         try:
             cone = CConexion.ConexionBaseDeDatos()
             cursor = cone.cursor()
-            sql = "update usuarios set verificado = True where alias = %s;"
+            sql = "UPDATE Usuarios SET verificado = TRUE WHERE alias = %s;"
             valores = (usuario,)
-            cursor.execute(sql,valores)
+            cursor.execute(sql, valores)
             cone.commit()
-            print("DEBUG: MODIFICACION ACTIVACIÓN: ", cursor.rowcount, "Verificación realizada")
+            print(f"DEBUG: MODIFICACION ACTIVACIÓN: {cursor.rowcount} verificación realizada")
             cone.close()
 
-        except mysql.connector.Error as error:
-            print("error al actualizar datos {}".format(error))
+        except Error as error:
+            print(f"Error al modificar activación: {error}")
 
+    @staticmethod
     def borrarUsuario(idUsuario):
         try:
             cone = CConexion.ConexionBaseDeDatos()
             cursor = cone.cursor()
-            sql = "delete from usuarios where usuario_id = %s;"
+            sql = "DELETE FROM Usuarios WHERE usuario_id = %s;"
             valores = (idUsuario,)
-            cursor.execute(sql,valores)
+            cursor.execute(sql, valores)
             cone.commit()
-            print("DEBUG: BORRADO USUARIO: ", cursor.rowcount, "Registro borrado")
+            print(f"DEBUG: BORRADO USUARIO: {cursor.rowcount} registro borrado")
             cone.close()
 
-        except mysql.connector.Error as error:
-            print("error al borrar datos {}".format(error))
+        except Error as error:
+            print(f"Error al borrar usuario: {error}")
 
+    @staticmethod
     def leerUnUsuario(alias):
         try:
             cone = CConexion.ConexionBaseDeDatos()
             cursor = cone.cursor()
-            sql = "select * from usuarios where alias = %s;"
+            sql = "SELECT * FROM Usuarios WHERE alias = %s;"
             valores = (alias,)
-            cursor.execute(sql,valores)
+            cursor.execute(sql, valores)
             miResultado = cursor.fetchall()
-            registros = cursor.rowcount
-            cone.commit()
-            print("DEBUG: LEER UN USUARIO: ",registros, "Registro recuperado")
+            leidos = len(miResultado)
             cone.close()
-            return miResultado, registros
+            print(f"DEBUG: LEER UN USUARIO: {leidos} registro recuperado")
+            return miResultado, leidos
 
-        except mysql.connector.Error as error:
-            print("error al leer datos {}".format(error))
+        except Error as error:
+            print(f"Error al leer usuario: {error}")
 
+    @staticmethod
     def leerEmail(email):
         try:
             cone = CConexion.ConexionBaseDeDatos()
             cursor = cone.cursor()
-            sql = "select * from usuarios where email = %s;"
+            sql = "SELECT * FROM usuarios WHERE email = %s;"
             valores = (email,)
-            cursor.execute(sql,valores)
-            miResultado =  cursor.fetchall()
-            leidos = cursor.rowcount
-            cone.commit()
-            print("DEBUG: LEER EMAIL: ",leidos, "Registro recuperado")
-            cone.close()
+            cursor.execute(sql, valores)
+            miResultado = cursor.fetchall()
+            leidos = len(miResultado)  # Cambié esto por cursor.rowcount
+            print(f"DEBUG: LEER EMAIL: {leidos} registro(s) recuperado(s)")
             return miResultado, leidos
+        except Exception as error:
+            print(f"Error al leer email: {error}")
+        finally:
+            if cone:
+                cone.close()  # Asegúrate de cerrar la conexión aquí
 
-        except mysql.connector.Error as error:
-            print("error al leer datos {}".format(error))
+
