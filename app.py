@@ -168,9 +168,10 @@ def enviar_correo():
     if session['usuario']:
         username = session['usuario']
         nombre = session['nombre']
-        avatar = session.get('avatar', 'img/avatar.png')
+        #avatar = 'img/avatar.png'
         if session['usuario']:
-            return render_template('entrarajugar.html',usuario=username,nombre=nombre,avatar=avatar)
+            return render_template('entrarajugar.html',usuario=username,nombre=nombre,avatar='img/avatar.png')
+            #return render_template('entrarajugar.html',usuario=username,nombre=nombre,avatar=avatar)
     else:
         return redirect('/')
 
@@ -265,8 +266,11 @@ def lobby():
 #@login_required
 def entrarajugar():
     username = session['usuario']
-    avatar = session['avatar']
-    nombre = session['nombre']    
+    nombre = session['nombre'] 
+    if session['avatar']:
+        avatar = session['avatar']
+    else:
+        avatar = 'img/avatar.png'  
     print('DEBUG ENTRAR A JUGAR.: Usuario', username, ' Nombre: ', nombre, ' Avatar: ', avatar)
     if session['usuario']:
         return render_template('entrarajugar.html',usuario=username,nombre=nombre,avatar=avatar)
@@ -346,15 +350,15 @@ def storage():
         else:
             CUsuarios.modificarActivacion(alias)
             session['usuario'] = alias
-            avatar = session['avatar']
-            nombre = session['nombre']
-            return render_template('entrarajugar.html',usuario=alias,nombre=nombre,avatar=avatar)
+            session['nombre'] = nombrep 
+            session['avatar'] = avatar_url
+            return render_template('entrarajugar.html',usuario=alias,nombre=nombrep,avatar=avatar_url)
     else:  
         CUsuarios.modificarActivacion(alias)
         session['usuario'] = alias
-        avatar = session['avatar']
-        nombre = session['nombre']
-        return render_template('entrarajugar.html',usuario=alias,nombre=nombre,avatar=avatar)
+        session['nombre'] = nombrep 
+        session['avatar'] = avatar_url
+        return render_template('entrarajugar.html',usuario=alias,nombre=nombrep,avatar=avatar_url)
 
 
 @app.route('/acceso', methods=['POST'])

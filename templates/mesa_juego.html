@@ -1180,8 +1180,8 @@ button:active {
 			// Enviar mensaje al chat informando
 			const mensaje = "La partida es al mejor de dos juegos de 40.";
 			socket.emit('mensaje_chat_mesa', { mesa_id: mesaId, username: 'Docemas', message: mensaje });
-			const mensaje = "Repartiendo cartas...";
-			socket.emit('mensaje_chat_mesa', { mesa_id: mesaId, username: 'Docemas', message: mensaje });
+			const mensaje2 = "Repartiendo cartas...";
+			socket.emit('mensaje_chat_mesa', { mesa_id: mesaId, username: 'Docemas', message: mensaje2 });
 			
 			// Ocultar el botón una vez que se pulsa
 			const btnRepartir = document.getElementById("btn-repartir");
