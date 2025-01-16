@@ -1715,6 +1715,21 @@ button:active {
 			} else {
 				botver.classList.remove('bloqueado');
 			}
+			const botord = document.getElementById('ordago');
+			const botenv = document.getElementById('envidar');
+			const botdec = document.getElementById('decrementar-envido');
+			const botinc = document.getElementById('incrementar-envido');
+			if (apuesta >= 40) {
+				botord.classList.add('bloqueado');				
+				botenv.classList.add('bloqueado');		
+				botdec.classList.add('bloqueado');	
+				botinc.classList.add('bloqueado');	
+			} else {  
+				botord.classList.remove('bloqueado');
+				botenv.classList.remove('bloqueado');
+				botdec.classList.remove('bloqueado');
+				botinc.classList.remove('bloqueado');
+			}
 		}
 		
 		function bloquearMesaBotones() {
@@ -1859,6 +1874,7 @@ button:active {
 		const apuestaActual = mesa.apuesta_actual;
 		const indiceApuesta = mesa.lances.indexOf(lanceActual);
 		let apuesta = mesa.apuesta[indiceApuesta];
+		let apuestaLance = apuesta;
 		let hablar = accion; 
 
 		// Inicializamos con 2 el valor de envido.	
@@ -1912,7 +1928,7 @@ button:active {
 
 		// Mostrar/ocultar botones según el turno
 		if (turnoJugador === jugadorActual) {
-			mostrarMesaBotones(apuesta);
+			mostrarMesaBotones(apuestaLance);
 		} else {
 			bloquearMesaBotones();
 		}

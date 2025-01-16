@@ -1,5 +1,6 @@
 # Ignorar el archivo .env
 .env
+.envRender
 
 # Ignorar archivos temporales de Python
 __pycache__/
@@ -10,3 +11,5 @@ __pycache__/
 .web/
 flask_session/
 Proyectos/
+
+TemasPendientes.txt
