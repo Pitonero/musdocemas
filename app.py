@@ -1005,8 +1005,15 @@ def handle_pedir_cartas(data):
         print(f'Va a hacer el emit a cartas pedidas con: ', {'jugador': jugador, 'turno_actual': jugador_turno, 'nuevas_cartas': manos[jugador]})
         # Emitir las nuevas cartas al jugador
         emit('cartas_pedidas', {'jugador': jugador, 'turno_actual': jugador_turno, 'contDescartados': mesa['musContador'], 'nuevas_cartas': manos[jugador]},  to=mesa_id)
-        emit('mensaje_mesa', {'msg': f"{jugador} se descarta. Habla {jugador_turno}", 'username': 'Docemas'}, to=mesa_id)
-               
+        
+        if num_cartas == 1:
+            cartulaje = "carta"
+        else:
+            cartulaje = "cartas"
+
+        emit('mensaje_mesa', {'msg': f"{jugador} pide {num_cartas} {cartulaje}. Habla {jugador_turno}", 'username': 'Docemas'}, to=mesa_id)
+        emit('mostrarMensaje', {'msg': f"{jugador} pide {num_cartas} {cartulaje}"}, to=mesa_id)
+
         if (mesa['musContador'] == 4):
             mesa["musContador"] = 0
         tables[mesa_id] = mesa  # Guardar cambios

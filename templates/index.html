@@ -12,6 +12,76 @@
             border-radius: 50%;
             border: 2px solid #fff;
         }
+/* Estilo para mover la "X" a la esquina superior derecha */
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7); /* Fondo oscuro con transparencia */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+}
+
+.modal-content {
+    background-color: #fefefe;
+    padding: 30px;
+    border-radius: 10px;
+    width: 90vw; /* Adapta la anchura al 90% del viewport */
+    max-width: 900px; /* Máximo 900px */
+    max-height: 90vh; /* Ajusta la altura máxima al 90% del viewport */
+    overflow-y: auto; /* Añade scroll si el contenido excede */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    position: relative; /* Hace que la "X" sea relativa al contenido */
+}
+
+.close {
+    position: absolute;
+    top: 10px; /* Ajusta la posición superior */
+    right: 15px; /* Ajusta la posición lateral */
+    color: #aaa;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 10;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+}
+
+.titulo-noticia {
+    color: #e63946; /* Rojo intenso */
+    font-size: 36px;
+    font-weight: bold;
+    text-align: center;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-content {
+    animation: fadeIn 0.5s ease;
+}
+
+
     </style>	
 </head>
 <body>
@@ -39,7 +109,13 @@
             <p>Únete a la comunidad de jugadores de Mus. Juega con amigos o compite contra jugadores de todo el mundo.</p>
             <a href="{{url_for('registrarse')}}" class="cta-button">Regístrate si es la primera vez que entras</a>
         </section>
-
+        <section id="noticias" class="section">
+            <h3>Noticia destacada</h3>
+			<p>Después de mucho trabajo, noches sin dormir y alguna que otra partida de mus entre líneas de código...</p>
+            <button id="openModal" class="secondary-button">Leer noticia</button>
+            <!--<a href="{{url_for('noticias')}}" class="secondary-button">Ver noticias</a>-->
+			<div id="modalContainer"></div>
+        </section>
         <!-- Sección de reglas y tutorial -->
         <section id="reglas" class="section">
             <h3>Reglas del Mus</h3>
@@ -60,14 +136,104 @@
             <a href="{{url_for('ranking')}}" class="secondary-button">Ver clasificación</a>
         </section>
     </main>
+	<script>
+		//const socket = io.connect(); // Conexión al servidor
+		
+		document.getElementById("openModal").onclick = function() {
+			fetch("/noticias")
+			.then(response => response.text())
+			.then(data => {
+				document.getElementById("modalContainer").innerHTML = data;
+				var modal = document.getElementById("myModal");
+				modal.style.display = "block";
 
+				var closeBtn = modal.querySelector(".close");
+				closeBtn.onclick = function() {
+					modal.style.display = "none";
+				};
+
+				window.onclick = function(event) {
+					if (event.target == modal) {
+						modal.style.display = "none";
+					}
+				};
+			});
+		}
+
+		function loadPrivacyModal() {
+			fetch("/politicaprivacidad")
+				.then(response => response.text())
+				.then(data => {
+					// Inserta el contenido del modal en la página
+					var modalContainer = document.createElement("div");
+					modalContainer.innerHTML = data;
+					document.body.appendChild(modalContainer);
+
+					// Obtiene el modal y lo muestra
+					var modalPrivacy = document.getElementById("myModalPrivacy");
+					modalPrivacy.style.display = "block";
+
+					// Configura el botón de cierre
+					var closePrivacy = modalPrivacy.querySelector(".close");
+					closePrivacy.onclick = function() {
+						modalPrivacy.style.display = "none";
+					};
+
+					// Cierra el modal si se hace clic fuera de él
+					window.onclick = function(event) {
+						if (event.target == modalPrivacy) {
+							modalPrivacy.style.display = "none";
+						}
+					};
+				});
+		}
+
+		function loadServicioModal() {
+			fetch("/terminosservicio")
+				.then(response => response.text())
+				.then(data => {
+					// Inserta el contenido del modal en la página
+					var modalContainer = document.createElement("div");
+					modalContainer.innerHTML = data;
+					document.body.appendChild(modalContainer);
+
+					// Obtiene el modal y lo muestra
+					var myModalTerms = document.getElementById("myModalTerms");
+					myModalTerms.style.display = "block";
+
+					// Configura el botón de cierre
+					var closeTerms = myModalTerms.querySelector(".close");
+					closeTerms.onclick = function() {
+						myModalTerms.style.display = "none";
+					};
+
+					// Cierra el modal si se hace clic fuera de él
+					window.onclick = function(event) {
+						if (event.target == myModalTerms) {
+							myModalTerms.style.display = "none";
+						}
+					};
+				});
+		}
+		function contactar() {
+			const username = document.querySelector('[data-name="txtAlias"]').textContent;
+			socket.emit('contactar', { username });
+			alert('Evento de enviar email lanzado para ' + username);
+		}
+
+		function cerrarSesion() {
+			// Redirige al usuario a la ruta del backend que cierra sesión
+			window.location.href = "/logout";
+		}
+			
+	</script>
     <!-- Pie de página con enlaces adicionales -->
     <footer>
         <p>&copy; 2024 Pablo Nieto. Todos los derechos reservados.</p>
         <nav class="footer-nav">
-            <a href="#contacto">Contacto</a> |
-            <a href="#privacidad">Política de Privacidad</a> |
-            <a href="#terminos">Términos de Servicio</a>
+			<a href="{{ url_for('contactar') }}">Contacto</a> |
+            <a href="#" onclick="loadPrivacyModal()">Política de Privacidad</a> |
+            <a href="#" onclick="loadServicioModal()">Términos de Servicio</a>
         </nav>
     </footer>
 	

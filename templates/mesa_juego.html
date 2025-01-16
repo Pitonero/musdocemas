@@ -220,7 +220,7 @@
   transform-origin: center; /* Escala desde el centro */
   box-sizing: border-box; /* Asegúrate de incluir bordes en las dimensiones */  
   cursor: pointer;
-  transition: transform 0.2s ease, border 0.2s ease; /* Transición suave */
+  /*transition: transform 0.2s ease, border 0.2s ease;*/ /* Transición suave */
   border: 0; /* Elimina cualquier borde visible */
   border-radius: 0; /* Esquinas rectas */
 } 
@@ -249,8 +249,15 @@
 }
 
 .carta:hover {
-  transform: scale(1.05); /* Efecto de zoom al pasar el ratón */
+  transform: none; /* No cambia el transform */
+ /* transform: scale(1.05); */ /* Efecto de zoom al pasar el ratón */
   border: 2px solid #3a3354; /* Color del borde al pasar el ratón */
+}
+
+.carta.tapada {
+  background-image: url('img/cartas/zz.png'); /* Imagen de dorso */
+  background-size: cover;
+  background-position: center;
 }
 
 .carta img {
@@ -563,18 +570,27 @@ button:active {
     transform: translateY(0);
   }
 }
+
+
+
 	.turno-notificacion {
       position: absolute;
       top: 10px;
       right: 10px;
-      background-color: rgba(0, 0, 0, 0.8);
-      color: white;
+      background-color: #87ceeb; /* Azul celeste */
+      color: #2c3e50; /* Texto oscuro para contraste */
+      font-family: 'Arial', sans-serif; /* Fuente limpia y legible */
+      font-size: 15px; /* Tamaño del texto más grande */	  
       padding: 10px 15px;
-      border-radius: 5px;
+      border-radius: 10px;
+	  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); /* Sombra para destacarlo */	  
       font-size: 14px;
       opacity: 1;
       visibility: visible;
       transition: opacity 0.5s ease, visibility 0.5s ease;
+      text-align: center; /* Centra el texto */
+      display: inline-block; /* Tamaño ajustado al contenido */
+      animation: aparecer 0.5s ease; /* Animación de entrada */	  
     }
 
     .turno-notificacion.oculto {
@@ -596,6 +612,29 @@ button:active {
 	.turno-label.oculto {
 		display: none; /* Oculta el elemento */
 	}	
+	
+
+
+/* Animación para hacer que el mensaje aparezca suavemente */
+@keyframes aparecer {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Opcional: Cambia el color al pasar el ratón */
+.turno-notificacion:hover {
+    background-color: #e58e26; /* Naranja suave */
+    color: #fff; /* Texto blanco */
+}
+
+	
+	
    .botoncm:disabled {
 		background-color: #ccc;
 		cursor: not-allowed;
@@ -1262,11 +1301,6 @@ button:active {
 			});
 		});
 
-		// Escuchar errores del servidor
-		socket.on('error', function(data) {
-			alert(data.message);
-		});
-
 		// Función para generar las parejas y actualizar la tabla
 		function inicializarPuntuacion(mesa) {
 			const jugadores = mesa.jugadores;
@@ -1535,6 +1569,7 @@ button:active {
 				num_cartas: cartasSeleccionadas.length,
 				cartasRestantes
 			})
+			
 			// Limpia las selecciones
 			//document.querySelectorAll('.carta.seleccionada').forEach(carta => carta.classList.remove('seleccionada'));
 			// Elimina las cartas seleccionadas visualmente
@@ -1592,6 +1627,9 @@ button:active {
 					cartasContainer.appendChild(cartaElement);
 				});
 			}
+			
+			////aqui
+			
 			console.log("Cartas pedidas, jugador siguiente:", turno_actual);
 			iniciarPeriodoDescarte(turno_actual);
 			console.log("Contador de descartados === ", contDescartados);
@@ -1759,6 +1797,13 @@ button:active {
         turnoNotificacion.classList.add("oculto");
       }, 3000);
     }
+
+	// Escuchar mensajeserrores del servidor
+	socket.on('mostrarMensaje', function(data) {
+		const turnoNotificacion = document.getElementById("turnoNotificacion");
+ 		turnoNotificacion.textContent = `${data.msg}`;
+		turnoNotificacion.classList.remove("oculto");
+	});
 
     // Recibir actualizaciones para comenzar la ronda desde el servidor
     socket.on('comenzar_ronda', (data) => {
@@ -2333,5 +2378,12 @@ button:active {
 		// Redirigir al jugador a la sala de espera
 		window.location.href = '/lobby'; // Redirige a la sala de espera
 	});
+	
+	
+	// Escuchar errores del servidor
+	socket.on('error', function(data) {
+		alert(data.message);
+	});
+	
 	</script>
 </html>
