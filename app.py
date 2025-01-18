@@ -127,8 +127,9 @@ def logout():
 
 @app.route('/contactar')
 def contactar():
-    nombre = session['nombre']
-    correo = session['correo']
+    if session['nombre']:
+        nombre = session['nombre']
+        correo = session['correo']
     return render_template('contactar.html', nombre=nombre, correo=correo)
 
 @app.route('/enviar_correo', methods=['POST'])
@@ -1007,12 +1008,12 @@ def handle_pedir_cartas(data):
         emit('cartas_pedidas', {'jugador': jugador, 'turno_actual': jugador_turno, 'contDescartados': mesa['musContador'], 'nuevas_cartas': manos[jugador]},  to=mesa_id)
         
         if num_cartas == 1:
-            cartulaje = "carta"
+            cartulaje = " carta"
         else:
-            cartulaje = "cartas"
+            cartulaje = " cartas"
 
         emit('mensaje_mesa', {'msg': f"{jugador} pide {num_cartas} {cartulaje}. Habla {jugador_turno}", 'username': 'Docemas'}, to=mesa_id)
-        emit('mostrarMensaje', {'msg': f"{jugador} pide {num_cartas} {cartulaje}"}, to=mesa_id)
+        emit('mostrarMensaje', {'msg': f"{jugador} pide {num_cartas} {cartulaje}",'jugador': jugador, 'num_cartas': num_cartas, 'cartulaje': cartulaje}, to=mesa_id)
 
         if (mesa['musContador'] == 4):
             mesa["musContador"] = 0

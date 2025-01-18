@@ -212,6 +212,7 @@
     width: 65px; /* Mantén el tamaño original */
     height: 100px; /* Mantén el tamaño original */
   background-size: 100% 100%;
+  background-image: url('../static/img/cartas/zz.png'); /* Imagen de carta tapada */
   background-position: center center;
   background-repeat: no-repeat; /* Evita repeticiones de la imagen */
   will-change: transform;
@@ -255,7 +256,7 @@
 }
 
 .carta.tapada {
-  background-image: url('img/cartas/zz.png'); /* Imagen de dorso */
+  background-image: url('../static/img/cartas/zz.png'); /* Imagen de dorso */
   background-size: cover;
   background-position: center;
 }
@@ -269,8 +270,8 @@
 }
 
 		.carta-oculta {
-			background-image: url('../static/img/cartas/reversoazul3.png');
-			background-size: contain;
+			background-image: url('../static/img/cartas/zz.png');
+			background-size: cover;
 			background-position: center;
 		}
 
@@ -435,17 +436,17 @@ header h1 .usuario {
     border-color: #f0c674 transparent transparent transparent;
 }
 /* Estilo para el mazo */
-.mazo {
+.mazo2 {
     position: absolute;
     width: 50px;
     height: 30px;
-    background-image: url('../static/img/cartas/reversoazul3mazo.png'); /* Cambia la ruta por la de tu imagen */
+ /*   background-image: url('../static/img/cartas/zz.png');*/ /* Cambia la ruta por la de tu imagen */
     background-size: cover;
     position: absolute;
     /*transform: rotate(30deg); Aplica el ángulo necesario */
 }
 
-.mazo img {
+.mazo2 img {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -796,6 +797,59 @@ button:active {
     color: #fff;
 }
 
+
+.carta-descartada {
+    width: 65px; /* Mantén el tamaño original */
+    height: 100px; /* Mantén el tamaño original */
+    background-image: url('../static/img/cartas/zz.png');
+    background-size: cover;
+    border: 1px solid #ccc;
+    position: absolute;
+    animation: moverAlMonton 1s ease-out forwards;
+}
+
+.nueva-carta {
+    width: 65px; /* Mantén el tamaño original */
+    height: 100px; /* Mantén el tamaño original */
+    background-image: url('../static/img/cartas/zz.png');
+    background-size: cover;
+    border: 1px solid #008cff;
+    animation: entrarEnMano 0.5s ease-out forwards;
+}
+
+@keyframes moverAlMonton {
+    0% {
+        transform: translate(0, 0);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-100px, 100px);
+        opacity: 0;
+    }
+}
+
+@keyframes entrarEnMano {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+#mazo {
+    width: 50px;
+    height: 70px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+ /*   background-image: url('../static/img/cartas/zz.png'); */
+    background-size: cover;
+    border: 1px solid #ccc;
+}
+
 	
     </style>
 </head>
@@ -949,13 +1003,6 @@ button:active {
 					<div class="carta carta-oculta"></div>
 				</div>
 			</div>
-            <!-- Panel de Botones -->
-        <!--    <div class="botones">
-                <button class="boton">Mus</button>
-                <button class="boton">Corto</button>
-                <button class="boton">Envido</button>
-                <button class="boton">Paso</button>
-            </div> -->
         </div>
         <!-- Chat de Juego -->
         <div class="chat">
@@ -1101,6 +1148,7 @@ button:active {
 				console.log("En mostrarBocadillo2 el índice es -1.");
 				return;
 			}
+			const posiciones = ["jugador-1", "jugador-2", "jugador-3", "jugador-4"];			
 			const position = posiciones[indice];
 			console.log("mostrarBocadillo2. Posicion: ", position, " indice: ", indice, " mensaje: ", mensaje);
 			const jugadorElement = document.querySelector(`.${position}`);
@@ -1283,9 +1331,9 @@ button:active {
 						// Mostrar las cartas del jugador conectado y ocultar las de los demás
 						let rutaImagen;
 						if (jugador === "{{ usuario }}") {
-							rutaImagen = `/static/img/cartas/${carta}.png`; // Mostrar la carta real
+							rutaImagen = `../static/img/cartas/${carta}.png`; // Mostrar la carta real
 						} else {
-							rutaImagen = `/static/img/cartas/zz.png`; // Mostrar la carta bocabajo
+							rutaImagen = `../static/img/cartas/zz.png`; // Mostrar la carta bocabajo
 						}
 
 						// Crear la ruta de la imagen
@@ -1800,10 +1848,86 @@ button:active {
 
 	// Escuchar mensajeserrores del servidor
 	socket.on('mostrarMensaje', function(data) {
+		const usuario = "{{ usuario }}";  
+		const jugadorDescarta = data.jugador;
+		const num_cartas = data.num_cartas;
+		const cartulaje = data.cartulaje;
+		const turnoJugadorIdx = reorganizedJugadores.findIndex(jugador => jugador === jugadorDescarta);	
 		const turnoNotificacion = document.getElementById("turnoNotificacion");
  		turnoNotificacion.textContent = `${data.msg}`;
 		turnoNotificacion.classList.remove("oculto");
+		const mePido = "Quiero " + num_cartas + cartulaje;
+		mostrarBocadillo2(turnoJugadorIdx, mePido);
+		if (jugadorDescarta !== usuario ) {
+			mostrarDescarte(turnoJugadorIdx, num_cartas);
+		}
 	});
+
+	function mostrarDescarte(indice, numCartas) {	
+		const posiciones = ["jugador-1", "jugador-2", "jugador-3", "jugador-4"];
+		const position = posiciones[indice];
+
+		console.log(
+			"Mostrar cartas con descarte y regeneración. Posición: ",
+			position,
+			" Índice: ", 
+			indice, 
+			" Número de cartas a solicitar: ", 
+			numCartas
+		);
+
+		// Buscar el contenedor del jugador por clase
+		const jugadorElement = document.querySelector(`.${position}`);
+		if (!jugadorElement) {
+			console.error(`No se encontró el contenedor para el jugador en la posición ${position}`);
+			return;
+		}
+
+		const contenedorCartas = jugadorElement.querySelector(".cartas");
+		if (!contenedorCartas) {
+			console.error(`No se encontró el contenedor de cartas dentro del jugador ${position}`);
+			return;
+		}
+
+		// Crear las 4 cartas inicialmente
+		const totalCartas = 4;
+		contenedorCartas.innerHTML = ""; // Limpiar cartas actuales
+		for (let i = 0; i < totalCartas; i++) {
+			const carta = document.createElement("div");
+			carta.classList.add("carta", "carta-oculta");
+			contenedorCartas.appendChild(carta);
+		}
+
+		// Seleccionar las cartas que se van a descartar (de derecha a izquierda)
+		const cartas = Array.from(contenedorCartas.children);
+		for (let i = 0; i < numCartas; i++) {
+			const carta = cartas[totalCartas - 1 - i]; // De derecha a izquierda
+
+			// Efecto de descarte (desaparecer con animación)
+			setTimeout(() => {
+				carta.style.transition = "transform 0.5s ease, opacity 0.5s ease";
+				carta.style.transform = "translateY(50px) rotate(-20deg)"; // Simula que se mueve hacia abajo
+				carta.style.opacity = "0";
+			}, i * 200);
+		}
+
+		// Regenerar cartas solicitadas (de izquierda a derecha)
+		setTimeout(() => {
+			for (let i = 0; i < numCartas; i++) {
+				const carta = cartas[totalCartas - numCartas + i]; // Las cartas descartadas (de izquierda a derecha)
+
+				// Reemplazar la carta descartada por una nueva
+				setTimeout(() => {
+					carta.style.transition = "transform 0.5s ease, opacity 0.5s ease";
+					carta.style.transform = "translateY(0) rotate(0)"; // Vuelve a su posición
+					carta.style.opacity = "1"; // Aparece nuevamente
+					carta.classList.add("carta-oculta");
+				}, i * 200);
+			}
+		}, numCartas * 200 + 500); // Tiempo total para el descarte
+	}
+
+
 
     // Recibir actualizaciones para comenzar la ronda desde el servidor
     socket.on('comenzar_ronda', (data) => {
