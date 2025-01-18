@@ -127,9 +127,12 @@ def logout():
 
 @app.route('/contactar')
 def contactar():
-    if session['nombre']:
-        nombre = session['nombre']
-        correo = session['correo']
+    return render_template('contactar.html', nombre="", correo="")
+
+@app.route('/contactar2')
+def contactar2():
+    nombre = session['nombre']
+    correo = session['correo']
     return render_template('contactar.html', nombre=nombre, correo=correo)
 
 @app.route('/enviar_correo', methods=['POST'])
