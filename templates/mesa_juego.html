@@ -891,7 +891,7 @@ button:active {
         <span class="usuario"> {{ usuario }}</span>
     </h1>
 	<nav>
-		<a href="{{ url_for('logout') }}" class="btn btn-danger">Desconectar</a>
+		<a href="{{ url_for('logout2') }}" class="btn btn-danger">Desconectar</a>
 	</nav>	
 </header>
 
@@ -1067,8 +1067,6 @@ button:active {
 		// Unirse a la sala de la mesa
 		socket.emit('join_mesa', { mesa_id: mesaroom, username: userroom });
 				
-		//const jugador = "{{ usuario }}";	
-		//alert("Usuario al entrar en mesa juego: " + jugador);
 		// Define las posiciones relativas (abajo, izquierda, arriba, derecha)
 		const posiciones = ["jugador-1", "jugador-2", "jugador-3", "jugador-4"];
 		// Reorganizar las posiciones según el usuario
@@ -1079,7 +1077,36 @@ button:active {
 		
 		document.addEventListener("DOMContentLoaded", () => {
 			const mesa = {{ mesa|tojson }}; // Datos de la mesa desde el servidor
-			actualizarMesa(mesa);
+
+		// Lógica para saber si un jugador se ha reconectado:	
+			//const accion = mesa.accion;
+			//if ((mesa.puntos[0] == 0) && (mesa.puntos[1] == 0) && (mesa.juegos[0] == 0) && (mesa.juegos[1] == 0)) {
+			console.log("Usuario ", userroom, " entra por reconexión a la mesa ", mesaroom, " Estado partida: ", mesa.estado_partida);
+			if ( mesa.estado_partida === "Repartir" ) {
+				actualizarMesa(mesa);
+			} else {
+			  // aqui se reconecta el Jugador
+				const btnRepartir = document.getElementById("btn-repartir");
+				btnRepartir.classList.add("oculto");							
+				actualizarMesa(mesa);
+				repartirCartasCliente(mesa.manos, userroom);						
+				// aqui
+				if ( mesa.estado_partida === "Descartar" ) {
+					ocultarBotones();	
+					iniciarPeriodoDescarte(jugadores[mesa.turno_actual])				 
+				}
+				if (( mesa.estado_partida === "Cortar" ) || ( mesa.estado_partida === "Jugar" )) {
+					const userIndex = jugadores.findIndex(jugador => jugador === userroom);
+					if (mesa.turno_actual === userIndex) {
+						mostrarMesaBotones(mesa.apuesta_actual);
+					} else {
+						bloquearMesaBotones();
+					}
+				}
+				if ( mesa.estado_partida === "Mus" ) {
+					mostrarBotones(jugadores[mesa.turno_actual]);				 
+				}	
+			}
 		});
 		
 		//Refrescar la mesa:
@@ -1156,6 +1183,48 @@ button:active {
 			});
 		inicializarPuntuacion(mesa);
 		}
+
+		function repartirCartasCliente(manos, usuario) {
+			// Encuentra las cartas del usuario conectado
+			const cartasJugador = manos[usuario];
+			
+			if (!cartasJugador) {
+				console.error(`No se encontraron cartas para el usuario ${usuario}`);
+				return;
+			}
+
+			// Encuentra el div del jugador conectado
+			const jugadorDiv = Array.from(document.querySelectorAll('.jugador')).find(div => {
+				const alias = div.querySelector('.alias').textContent;
+				return alias === usuario; // Coincide con el jugador conectado
+			});
+
+			if (!jugadorDiv) {
+				console.error(`No se encontró el contenedor para el usuario ${usuario}`);
+				return;
+			}
+
+			// Limpiar las cartas actuales del jugador conectado
+			const cartasDiv = jugadorDiv.querySelector('.cartas');
+			cartasDiv.innerHTML = '';
+
+			// Asignar las cartas al jugador conectado
+			cartasJugador.forEach(carta => {
+				const cartaElement = document.createElement('div');
+				cartaElement.classList.add('carta');
+
+				// Mostrar la carta real para el jugador conectado
+				const rutaImagen = `../static/img/cartas/${carta}.png`;
+				cartaElement.style.backgroundImage = `url(${rutaImagen})`;
+				cartaElement.style.backgroundSize = 'cover';
+				cartaElement.style.backgroundPosition = 'center';
+
+				cartasDiv.appendChild(cartaElement);
+			});
+
+			console.log(`Cartas repartidas al usuario ${usuario}:`, cartasJugador);
+		}
+
 
 		function mostrarBocadillo(jugadorElement, mensaje) {
 			//alert("Entra en mostrar bocadillo. ");
@@ -1237,7 +1306,8 @@ button:active {
 			const x = (window.screen.availWidth - 1524) / 2;
 			const y = (window.screen.availHeight - 808) / 2;
 			window.moveTo(x, y);
-			//socket.emit('join_mesa', { username: username, mesa_id: mesaId });
+			//socket.emit('join_mesa', { username: username, mesa_id: mesaId });	
+		
 		};
 
 	
@@ -1389,7 +1459,13 @@ button:active {
 
 			const pareja1 = `${truncarNombre(jugadores[0])} - ${truncarNombre(jugadores[2])}`;
 			const pareja2 = `${truncarNombre(jugadores[1])} - ${truncarNombre(jugadores[3])}`;	
-		  
+
+		  // Actualizar el HTML
+			document.getElementById("pareja1").textContent = pareja1;
+			document.getElementById("pareja2").textContent = pareja2;
+		  // Inicializar los puntos y juegos
+			actualizarPuntuacion("pareja1", mesa.juegos[0], mesa.puntos[0]);
+			actualizarPuntuacion("pareja2", mesa.juegos[1], mesa.puntos[1]);		  
 			// Asignar colores al marcador
 			document.getElementById('pareja1').classList.add('equipo-azul');
 			document.getElementById('pareja2').classList.add('equipo-rojo');
@@ -1405,30 +1481,14 @@ button:active {
 				}
 			});
 		}
-		/* // Función para generar las parejas y actualizar la tabla
-		function inicializarPuntuacion(mesa) {
-			const jugadores = mesa.jugadores;
-
-		  // Crear las parejas
-		  const pareja1 = `${truncarNombre(jugadores[0])} - ${truncarNombre(jugadores[2])}`;
-		  const pareja2 = `${truncarNombre(jugadores[1])} - ${truncarNombre(jugadores[3])}`;
-
-		  // alert("Pareja 1:" + pareja1);
-		  // Actualizar el HTML
-			document.getElementById("pareja1").textContent = pareja1;
-			document.getElementById("pareja2").textContent = pareja2;
-
-		  // Inicializar los puntos y juegos
-			actualizarPuntuacion("pareja1", mesa.juegos[0], mesa.puntos[0]);
-			actualizarPuntuacion("pareja2", mesa.juegos[1], mesa.puntos[1]);
-		} */
 		
 		// Función para truncar los nombres a los 2 primeros y 2 últimos caracteres
 		function truncarNombre(nombre) {
 		  if (nombre.length <= 4) {
 			return nombre; // Si el nombre tiene 4 caracteres o menos, se devuelve tal cual
 		  }
-		  return nombre.substring(0, 1) + nombre.substring(nombre.length - 2); // Combina los primeros 1 y los últimos 2 caracteres
+		  return nombre.substring(0, 3); // Obtiene los 3 primeros caracteres del Alias
+		 // return nombre.substring(0, 1) + nombre.substring(nombre.length - 2); // Combina los primeros 1 y los últimos 2 caracteres
 		}
 
 		// Función para actualizar puntos y juegos

@@ -92,6 +92,16 @@ def registrarse():
         mostrar_verificacion = False 
     )
 
+@app.route('/logout2')
+def logout2():
+
+    # Revisar disconnect
+    username = session.get('usuario')
+    mesa_id = session.get('mesa_id')
+    #mesa_id = session['mesa_id']  # Recuperar el identificador de la mesa
+    #mesa = tables.get(mesa_id) 
+    print("DEBUG LOGOUT2 JUGADOR ", username, ". Id de la mesa: ", mesa_id)
+    return render_template('index.html')
 
 @app.route('/logout')
 def logout():
@@ -263,6 +273,14 @@ def lobby():
     usuario = session.get('usuario')
     avatar = session['avatar']  
     print('Abrir sala de espera con Usuario: ', usuario, " Avatar: ", avatar)
+
+    if usuario in logged_players:
+        for table, jugadores in tables.items():
+            for i, jugador in enumerate(jugadores):
+                if jugador == usuario:
+                    print(f"Jugador {usuario} estaba jugando en la mesa: {tables[table]['nombre']}")
+                    return render_template('reingresar_mesa.html', usuario=usuario, mesa=tables[table]['nombre'])
+
     return render_template('sala_espera.html',usuario=usuario,avatar=avatar)
     #return render_template('sala_espera.html',usuario=usuario,avatar=nombreAvatar)
 
@@ -374,14 +392,17 @@ def acceso():
     # Simulación de lógica de autenticación
     if not usuario:
         mensaje_error = "Debe teclear el usuario."
+        return render_template('identificacion.html', usuario=usuario,password=password,mensaje_error=mensaje_error)
     elif not password:  
         mensaje_error = "Debe teclear la password."
-    
+        return render_template('identificacion.html', usuario=usuario,password=password,mensaje_error=mensaje_error)
+
     datosusuario, registros = CUsuarios.leerUnUsuario(usuario)
     print("DEBUG. Datos usuario leer:", datosusuario, " leidos: ", registros)
 
     if registros != 1:
         mensaje_error = "Usuario no encontrado."
+        return render_template('identificacion.html', usuario=usuario,password=password,mensaje_error=mensaje_error)
     else:
         nombre = datosusuario [0] [1]
         usuariobd = datosusuario [0] [2]
@@ -402,22 +423,29 @@ def acceso():
         
         if usuario != usuariobd:
             mensaje_error = "Usuario no existe."
+            return render_template('identificacion.html', usuario=usuario,password=password,mensaje_error=mensaje_error)
         elif password_hash != passwordbd:
             mensaje_error = "Contraseña incorrecta."
+            return render_template('identificacion.html', usuario=usuario,password=password,mensaje_error=mensaje_error)
         else:
             mensaje_error = "Datos correctos."
             session['usuario'] = usuariobd
             session['nombre'] = nombre
             session['avatar'] = avatar
-            session['correo'] = correo            
-            #app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=7)  # Mantener sesión por 7 días
-            #login_user(usuario, remember=True)
-            return render_template('entrarajugar.html',usuario=usuario,nombre=nombre,avatar=avatar)
-            # return render_template('salajuego.html',usuario=usuario)  # Redirige a la sala de espera perfil si es exitoso   
+            session['correo'] = correo        
+
             if usuario and usuario not in logged_players:
                 logged_players.append(usuario)
 
-    return render_template('identificacion.html', usuario=usuario,password=password,mensaje_error=mensaje_error)
+            # En el caso en el que el jugador ya estuviera en una mesa y busca reconectarse aqui
+            for id_mesa, mesa in tables.items():
+                if usuariobd in mesa['jugadores']:
+                    print(f"DEBUG ACCESO. Jugador {usuariobd} estaba jugando en la mesa: {id_mesa}")
+                   #sid = request.sid
+                   # join_room(str(id_mesa))
+                    return render_template('mesa_juego.html', mesa=tables[id_mesa], usuario=usuariobd, mesa_id=id_mesa)
+
+    return render_template('entrarajugar.html',usuario=usuario,nombre=nombre,avatar=avatar)
 
 
 @socketio.on('join')
@@ -456,7 +484,7 @@ def handle_disconnect():
         # Habría que eliminarlo de jugadores o sustituirlo por bot
        #jugadores = mesa["jugadores"]
         print("DEBUG DESCONECTAR JUGADOR. ", username)
-        socketio.emit('mensaje_mesa', {'msg': f"El jugador {username}, se ha desconectado de la mesa de juego.", 'username': 'Docemas' }, to=mesa_id)
+        socketio.emit('mensaje_mesa', {'msg': f"{username}, tiene problemas con su conexión.", 'username': 'Docemas' }, to=mesa_id)
 
     print(f"Jugador desconectado: {username}")
     if username in logged_players:
@@ -555,6 +583,7 @@ def handle_entrar_asiento(data):
     if mesa_id not in salas:
         salas[mesa_id] = []
     salas[mesa_id].append(username)
+    #print("Todas las tablas: ", tables)
     # Emitir un mensaje solo a los de la room notificando el nuevo jugador
     emit('chat_message', {'message': f"{username} se ha unido a la mesa {numeroMesa}.", 'username': 'Docemas'}, to=mesa_id)
     emit('update_tables', tables, broadcast=True) # Emitir un mensaje a todos en la sala notificando el nuevo jugador
@@ -623,6 +652,7 @@ def handle_create_table(data):
         "jugadores": [None, None, None, None],  # Asientos vacíos
         "avatares": [None, None, None, None],  # Avatares vacíos
         "lances": ["Grande", "Chica", "Pares", "Juego", "Punto"],
+        "estado_partida": "Repartir",
         "descartes": [],
         "manos": [],
         "mano": 0,
@@ -661,7 +691,7 @@ def handle_create_table(data):
     }
 
 
-   # print('Va a hacer el emit desde create_table: ',  table_id)  
+    print('CREAR MESA PY. Va a hacer el emit desde create_table: ',  table_id, 'nro_table', table_counter )  
     emit('crear_mesaPY', { 'table_name': table_id, 'nro_table': table_counter }, broadcast=True)
     session['mesa_id'] = table_id  # Almacenamos el nombre de la mesa en la sesión del jugador
     table_counter += 1
@@ -686,8 +716,8 @@ def iniciar_partida(data):
 def iniciar_partida(data):
     table_id = data.get('table_id')
     mesa = tables.get(table_id)
-    inicializar_partida(table_id)
     inicializar_mesa(mesa, table_id)
+    inicializar_partida(table_id)
     #print("Mesa:", mesa)
     print("Va a llamar a reiniciar_nueva_partida. table_id: ", table_id)
     emit('reiniciar_nueva_partida', { 'mesa_id': table_id}, to=table_id)
@@ -696,18 +726,19 @@ def iniciar_partida(data):
 def inicializar_partida(table_id):
     mesa = tables.get(table_id)
    # Seleccionar aleatoriamente el mano (índice entre 0 y 3)
-    mano = random.randint(0, 3)
-    estado = 'En juego'
-    tables[table_id]["estado"] = estado
-    tables[table_id]["mano"] = mano
-    tables[table_id]['turno_actual'] = mano
-    tables[table_id]['musContador'] = 0
+    if mesa["juegos"][0] == 0 and mesa["puntos"][0] == 0 and mesa["juegos"][1] == 0 and mesa["puntos"][1] == 0:
+        mano = random.randint(0, 3)
+        estado = 'En juego'
+        tables[table_id]["estado"] = estado
+        tables[table_id]["mano"] = mano
+        tables[table_id]['turno_actual'] = mano
+        tables[table_id]['musContador'] = 0
 
     ###### Simulación de cuatro jugadores en mesa. Es para pruebas con un un usuario logado:
     #tables[table_id]["jugadores"] = ['Gordiano1', 'Gordiano10', 'Gordiano11', 'Gordiano12']
     #tables[table_id]["avatares"] = ['../static/img/avatares/avatar19.png', '../static/img/avatares/avatar99.png', '../static/img/avatares/avatar9.png', '../static/img/avatares/avatar111.png']
  
-    mesa = tables.get(table_id)
+        mesa = tables.get(table_id)
 
 
 @socketio.on('actualizar_mesa')
@@ -759,6 +790,7 @@ def handle_repartir_cartas(data):
         mesa['baraja'] = baraja
         mesa['descartes'] = descartes
         mesa['manos'] = manos
+        mesa['estado_partida'] = "Mus"
         tables[mesa_id] = mesa  # Guardar cambios en la mesa
         print("cartas repartidas manos:", manos)
         
@@ -913,7 +945,7 @@ def handle_descartar_cartas(data):
     mesa_id = data['mesa_id']
     username = data['username']
     descartes = data['cartas_descartadas']
-
+    
     try:
         mesa = tables.get(mesa_id)
         if not mesa:
@@ -936,7 +968,7 @@ def handle_descartar_cartas(data):
         mesa['manos'][jugador_key] = [
             carta for carta in mesa['manos'][jugador_key] if carta not in descartes
         ]
-        print(f"Actualiza la mano del jugador index: ", mesa['manos'][jugador_key])
+        print(f"DESCARTE: Actualiza la mano del jugador index: ", mesa['manos'][jugador_key])
         # Añadir los descartes al pool de descartes de la mesa
         if 'descartes' not in mesa or not isinstance(mesa['descartes'], list):
             mesa['descartes'] = []
@@ -955,7 +987,6 @@ def handle_descartar_cartas(data):
         #emit('cartas_repartidas', {'mesa_id': mesa_id,'username': username,'cartas': mesa['manos'][jugador_index]}, room=mesa_id)
     except (KeyError, ValueError) as e:
         emit('error', {'message': str(e)}, to=mesa_id)
-
 
 @socketio.on('pedir_cartas')
 def handle_pedir_cartas(data):
@@ -1014,7 +1045,7 @@ def handle_pedir_cartas(data):
             cartulaje = " carta"
         else:
             cartulaje = " cartas"
-
+        tables[mesa_id] = mesa 
         emit('mensaje_mesa', {'msg': f"{jugador} pide {num_cartas} {cartulaje}. Habla {jugador_turno}", 'username': 'Docemas'}, to=mesa_id)
         emit('mostrarMensaje', {'msg': f"{jugador} pide {num_cartas} {cartulaje}",'jugador': jugador, 'num_cartas': num_cartas, 'cartulaje': cartulaje}, to=mesa_id)
 
@@ -1039,7 +1070,7 @@ def tratar_mus(data):
     #print("Antes de actualizar: indice mano: ", mesa['mano'], " indica turno_actual: ",  mesa['turno_actual'])
     mesa['musContador'] += 1
     print("TRATAR_MUS 1: mesa['mano']: ", mesa['mano'])
-
+    mesa['estado_partida'] = "Mus"
     # Si es la primera ronda el nuevo mano corre un turno, sino el mano corre con la nueva ronda
     if mesa["juegos"][0] == 0 and mesa["puntos"][0] == 0 and mesa["juegos"][1] == 0 and mesa["puntos"][1] == 0:
         mesa['mano'] = (mesa['mano'] + 1) % len(mesa['jugadores'])
@@ -1067,20 +1098,21 @@ def tratar_mus(data):
             jugador_turno = jugadores[mesa["turno_actual"]]  
             print("[DEBUG] TRATAR MUS. CONTADOR ES 4 mesa['mano']: ", mesa['mano'])
 
-    tables[mesa_id] = mesa  # Guardar cambios
-
+    if (musContador == 4):
+        mesa['estado_partida'] = "Descartar"
+    
     emit('actualizar_mus', {
         'musContador': mesa['musContador'],
         'indiceActual': mesa['turno_actual'],        
         'jugadorActual': jugador_turno
-    }, broadcast=True)
-    
+    }, to=mesa_id)
+
     if (musContador == 4):
         mesa["musContador"] = 0
         emit('mensaje_mesa', {'msg': f"{jugadorAntes} se da MUS. {jugador_turno} es ahora el mano y le toca descartarse.", 'username': 'Docemas'}, to=mesa_id)
     else:
         emit('mensaje_mesa', {'msg': f"{jugadorAntes} se da MUS. Habla {jugador_turno}", 'username': 'Docemas'}, to=mesa_id)
-    
+
     tables[mesa_id] = mesa  # Guardar cambios
 
 
@@ -1089,7 +1121,7 @@ def tratar_corto(data):
     mesa_id = data['mesa_id']
     mesa = tables.get(mesa_id)
     jugadores = mesa['jugadores']
-
+    mesa['estado_partida'] = "Cortar"
     # Si es la primera ronda el mano es el que corta, sino el que toque
     if mesa["juegos"][0] == 0 and mesa["puntos"][0] == 0 and mesa["juegos"][1] == 0 and mesa["puntos"][1] == 0:
         jugador_turno = jugadores[mesa["turno_actual"]]
@@ -1153,7 +1185,7 @@ def manejar_accion(data):
     # Recuperar la mesa
     mesa = tables.get(mesa_id)
     #debug_manos(mesa)
-    
+    mesa['estado_partida'] = "Jugar"
     # Validar que 'lance_actual' no sea None
     #if mesa["lance_actual"] is None:
     #    raise ValueError("[ERROR] Manejar accion: 'lance_actual' no está definido en la mesa.")
@@ -1966,7 +1998,7 @@ def registrar_lance(mesa, ganador, lance, apuesta_actual, estado_apuesta):
                 mesa["juego"][1] += amarracos
             elif lance == "Punto":
                 mesa["punto"][1] += amarracos  
-    #aqui
+    
     print("[DEBUG] Entra en registrar lance. Valor de Puntos: ", mesa['puntos'])
     mesa["jugadorApuesta"] = None
     
@@ -2091,6 +2123,7 @@ def verificar_finaliza_juego_partida(mesa):
 def inicializar_mesa(mesa, mesa_id):
     # Limpiar los resultados de la ronda anterior para preparar la nueva
     print("[DEBUG] verificar_finaliza_juego_partida. mesa['mano']: ", mesa['mano'])
+    mesa['estado_partida'] = "Repartir"
     mesa["lance_actual"] == "Grande"
     mesa["turno_actual"] = mesa["mano"]
     mesa["musContador"] = 0

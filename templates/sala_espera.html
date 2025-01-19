@@ -157,8 +157,12 @@
 			const nroMesa = data.nro_table; // Número de mesa de la solicitud
 			//console.log(`Se va a crear la mesa: ${mesaId}`);
             const mesasContainer = document.getElementById("mesasContainer");
-            const nuevaMesa = crearMesaHTML(`Mesa_${nroMesa}`, "En Espera", ["", "", "", ""]);					
-            mesasContainer.appendChild(nuevaMesa);
+            const nuevaMesa = crearMesaHTML(`Mesa_${nroMesa}`, "En Espera", ["", "", "", ""]);
+			//aqui
+			document.getElementById('mesasContainer').appendChild(nuevaMesa);
+			console.log(document.querySelectorAll('.mesa'));
+
+           // mesasContainer.appendChild(nuevaMesa);
             mesasContainer.scrollTop = mesasContainer.scrollHeight;
 		});
 
@@ -243,15 +247,76 @@
         } 
 															 
        // window.onload = inicializarMesas;  
- 
+	   
+	   
+	   
+	   
+		socket.on('update_tables', (tables) => {
+			console.log(`Recibiendo actualización de mesas`, tables);
+
+			// Iterar sobre cada mesa
+			Object.keys(tables).forEach((mesaId) => {
+				//const idLimpio = mesaId.replace('#', '');
+				const mesaData = tables[mesaId];
+				const jugadores = mesaData.jugadores;
+				const avatares = mesaData.avatares;
+				// Buscar el elemento de la mesa en el HTML
+				//const mesaElement = document.querySelector(`#${mesaId}`);
+				const mesaElement = document.querySelector(`[data-mesa-id="${mesaId}"]`);
+
+				if (!mesaElement) {
+					console.error("No se encontró el elemento con ID: ", mesaId);
+					return;
+				}
+
+				// Seleccionar todos los elementos de los asientos de la mesa
+				const asientos = mesaElement.querySelectorAll('.jugador');
+				console.log(`Asientos encontrados en ${mesaId}: ${asientos.length}`);
+
+				jugadores.forEach((jugador, index) => {
+					if (index >= asientos.length) {
+						console.warn(`Índice fuera de rango: ${index} para la mesa ${mesaId}`);
+						return;
+					}
+
+					const asiento = asientos[index];
+					console.log(`Procesando asiento ${index} en ${mesaId} con jugador:`, jugador);
+
+					if (asiento) {
+						const avatarUrl = avatares[index] || '';
+
+						if (jugador) {
+							asiento.style.backgroundImage = `url(${avatarUrl})`;
+							asiento.nextElementSibling.textContent = jugador;
+							asiento.classList.add('ocupado');
+							console.log(`Asignado jugador ${jugador} con avatar ${avatarUrl} en ${mesaId}`);
+						} else {
+							asiento.style.backgroundImage = "";
+							asiento.nextElementSibling.textContent = `Jugador ${index + 1}`;
+							asiento.classList.remove('ocupado');
+							console.log(`Eliminado jugador del asiento ${index} en ${mesaId}`);
+						}
+					} else {
+						console.error(`No se encontró el asiento en la mesa ${mesaId}`);
+					}
+				});
+			});
+		});
+	   
+	   
+	   
+	   
+	   
+	   
+		/*
 		socket.on('update_tables', (tables) => {
 			// Iterar sobre cada mesa
 			Object.keys(tables).forEach((mesaId) => {
 				//alert("Entra en update_tables, Mesa: " + mesaId);
-				const jugadores = tables[mesaId].jugadores;
-				const avatares = tables[mesaId].avatares;
-				const asientos = tables[mesaId]; // Array de usuarios en la mesa
-				console.log(`Mesa ID: ${mesaId}, Mesa:`, asientos, jugadores, avatares);
+				const mesaData = tables[mesaId]; // Obtener datos de la mesa correctamente
+				const jugadores = mesaData.jugadores;
+				const avatares = mesaData.avatares;				
+				console.log(`Mesa ID: ${mesaId}, Mesa:`, mesaData, jugadores, avatares);
 				// Actualizar visualmente la mesa
 				const mesaElement = document.querySelector(`#${mesaId}`);
 				//console.log("Mesa element: ", mesaElement); // Debería devolver el elemento <div id="Mesa_1">
@@ -281,7 +346,7 @@
 					});
 				}
 			});
-		}); 
+		});  */
  
 		function iniciarJuego(boton) {
 			const mesaDiv = boton.closest('.mesa');
@@ -290,7 +355,7 @@
 		}
 	
 		socket.on('partida_iniciada', (data) => {
-			console.log("Partida iniciada:", data);
+			console.log("Partida iniciada: ", data);
 			//alert("Se va a llamar a /mesa_juego/" + data.mesa_id);
 			window.location.href = `/mesa_juego/${data.mesa_id}`;
 		});		
