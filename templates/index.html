@@ -183,7 +183,7 @@
 			} else {
 				document.getElementById("cookie-banner").style.display = "block";
 			}
-
+			// Para borrar la preferencia en localstore, desde la consola: localStorage.removeItem("cookiesAccepted");
 			// Evento para aceptar cookies
 			document.getElementById("accept-cookies").addEventListener("click", function() {
 				localStorage.setItem("cookiesAccepted", "true");
@@ -287,7 +287,7 @@
 	</script>
     <!-- Pie de página con enlaces adicionales -->
     <footer>
-        <p>&copy; 2024 Pablo Nieto. Todos los derechos reservados.</p>
+        <p>&copy; 2025 Pablo Nieto. Todos los derechos reservados.</p>
         <nav class="footer-nav">
 			<a href="{{ url_for('contactar') }}">Contacto</a> |
             <a href="#" onclick="loadPrivacyModal()">Política de Privacidad</a> |
