@@ -10,6 +10,17 @@
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 	<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/mesa_juego.css') }}">
+<style>	
+/*.mesa.mesa-en-espera h3 {
+    color: gray;
+}*/
+
+.mesa.mesa-en-juego h3 {
+    color: green;
+    font-weight: bold;
+}
+
+</style>		
 </head>
 <body>
     <header class="header">
@@ -64,55 +75,6 @@
 			// Desplaza automáticamente hacia el final de la lista
 			playerList.scrollTop = playerList.scrollHeight;
 		}); 
-
-
-		// Escuchar el evento 'update_screen' enviado por el servidor
-		socket.on('update_screen', (tables) => {
-			console.log("Mesa elementos: ", Object.keys(tables).length);
-			// Dibujar e Iterar sobre cada mesa
-			for (const mesaId in tables) {
-			// Recuperar los parámetros desde los datos recibidos
-				const estado = tables[mesaId].estado;
-				const jugadores = tables[mesaId].jugadores;
-				const avatares = tables[mesaId].avatares;				
-				const asientos = tables[mesaId]; // Array de usuarios en la mesa
-				console.log(`Mesa ID: ${mesaId}, Mesa:`, estado, asientos, jugadores, avatares);
-				//alert("Update screen: estado: " + estado + "Mesa a tratar: " + mesaId + " Jugadores: " + jugadores);
-				const mesasContainer = document.getElementById("mesasContainer");
-				const nuevaMesa = crearMesaHTML(mesaId, estado, ["", "", "", ""], ["", "", "", ""]);		   
-				mesasContainer.appendChild(nuevaMesa);
-				mesasContainer.scrollTop = mesasContainer.scrollHeight;
-
-					// Actualizar visualmente la mesa
-					const mesaElement = document.querySelector(`#${mesaId}`);
-					//console.log("Mesa element: ", mesaElement); // Debería devolver el elemento <div id="Mesa_1">
-					if (mesaElement) {
-						// Selecciona todos los asientos en la mesa
-						const asientos = mesaElement.querySelectorAll('.jugador');
-
-						jugadores.forEach((jugador, index) => {
-
-							const asiento = asientos[index];
-							const avatarUrl = avatares[index];
-							if (asiento) {
-								if (jugador) {
-									// Si hay un jugador, mostrar su avatar (o color genérico)
-									asiento.style.backgroundImage = "url("+avatarUrl+")";// Cambiar a una URL real si tienes avatares
-								//	asiento.style.backgroundImage = "url('../static/img/avatares/avatar17.png')"; // Cambiar a una URL real si tienes avatares
-									asiento.nextElementSibling.textContent = jugador;	
-									asiento.classList.add('ocupado');
-								} else {
-									// Si no hay usuario, limpiar el asiento
-									asiento.style.backgroundImage = "";
-									asiento.nextElementSibling.textContent = `Jugador ${index + 1}`;	
-									asiento.classList.remove('ocupado');
-								}
-							}
-						});
-					}
-				//});
-			}
-		}); 	
 	});
     </script>
 	<script>		
@@ -260,15 +222,43 @@
 				const mesaData = tables[mesaId];
 				const jugadores = mesaData.jugadores;
 				const avatares = mesaData.avatares;
+				const estadoMesa = mesaData.estado || "En Espera";  // Obtener el estado de la mesa
+				console.log("Estado de la mesa: ", mesaId, " es ", estadoMesa);
 				// Buscar el elemento de la mesa en el HTML
 				//const mesaElement = document.querySelector(`#${mesaId}`);
-				const mesaElement = document.querySelector(`[data-mesa-id="${mesaId}"]`);
+				let mesaElement = document.querySelector(`[data-mesa-id="${mesaId}"]`);
+				//const mesaElement = document.querySelector(`#${mesaId}`);
 
 				if (!mesaElement) {
 					console.error("No se encontró el elemento con ID: ", mesaId);
-					return;
-				}
+					console.log(`Creando mesa: ${mesaId} porque no se encontró en el DOM`);
 
+					const nuevaMesa = crearMesaHTML(mesaId, "En Espera", ["", "", "", ""], ["", "", "", ""]);
+					mesasContainer.appendChild(nuevaMesa);
+
+					// Buscar de nuevo la mesa después de agregarla al DOM
+					mesaElement = document.querySelector(`[data-mesa-id="${mesaId}"]`);
+					//mesaElement = document.querySelector(`#${mesaId}`);
+				}
+				// Actualizar estado de la mesa en el título <h3>
+				const estadoElement = mesaElement.querySelector('h3');
+				if (estadoElement) {
+					const textoActual = estadoElement.textContent;
+					const nuevoTexto = `${mesaId} - ${estadoMesa}`;
+					if (textoActual !== nuevoTexto) {
+						estadoElement.textContent = nuevoTexto;
+						console.log(`Estado de la mesa ${mesaId} actualizado a: ${estadoMesa}`);
+					}
+				}
+				
+				if (estadoMesa === "En juego") {
+					mesaElement.classList.add('mesa-en-juego');
+					mesaElement.classList.remove('mesa-en-espera');
+				} else {
+					mesaElement.classList.add('mesa-en-espera');
+					mesaElement.classList.remove('mesa-en-juego');
+				}
+				
 				// Seleccionar todos los elementos de los asientos de la mesa
 				const asientos = mesaElement.querySelectorAll('.jugador');
 				console.log(`Asientos encontrados en ${mesaId}: ${asientos.length}`);
@@ -304,50 +294,6 @@
 		});
 	   
 	   
-	   
-	   
-	   
-	   
-		/*
-		socket.on('update_tables', (tables) => {
-			// Iterar sobre cada mesa
-			Object.keys(tables).forEach((mesaId) => {
-				//alert("Entra en update_tables, Mesa: " + mesaId);
-				const mesaData = tables[mesaId]; // Obtener datos de la mesa correctamente
-				const jugadores = mesaData.jugadores;
-				const avatares = mesaData.avatares;				
-				console.log(`Mesa ID: ${mesaId}, Mesa:`, mesaData, jugadores, avatares);
-				// Actualizar visualmente la mesa
-				const mesaElement = document.querySelector(`#${mesaId}`);
-				//console.log("Mesa element: ", mesaElement); // Debería devolver el elemento <div id="Mesa_1">
-				if (mesaElement) {
-					// Selecciona todos los asientos en la mesa
-					const asientos = mesaElement.querySelectorAll('.jugador');
-
-					jugadores.forEach((jugador, index) => {
-						//const avatarUrl = "../static/{{ avatar }}"; 
-						const avatarUrl = avatares[index];
-						//alert ("Avatar : " + avatarUrl);
-						const asiento = asientos[index];
-						if (asiento) {
-							if (jugador) {
-								// Si hay un jugador, mostrar su avatar (o color genérico)
-								//asiento.style.backgroundImage = "url('../static/img/avatar.png')"; // Cambiar a una URL real si tienes avatares
-								asiento.style.backgroundImage = "url("+avatarUrl+")"; // Cambiar a una URL real si tienes avatares
-								asiento.nextElementSibling.textContent = jugador;	
-								asiento.classList.add('ocupado');
-							} else {
-								// Si no hay usuario, limpiar el asiento
-								asiento.style.backgroundImage = "";
-								asiento.nextElementSibling.textContent = `Jugador ${index + 1}`;	
-								asiento.classList.remove('ocupado');
-							}
-						}
-					});
-				}
-			});
-		});  */
- 
 		function iniciarJuego(boton) {
 			const mesaDiv = boton.closest('.mesa');
 			const tableId = mesaDiv.getAttribute('data-mesa-id');
@@ -381,7 +327,47 @@
 			socket.emit('chat_message', { username: username, message: message });
 			document.getElementById('chat-message').value = ''; // Limpiar el campo
         }
-		
+	
+	
+		// Eliminar de la mesa al jugador si ya está sentado en otra
+		socket.on('errorAsiento', function(data) {
+			console.log("Datos recibidos del servidor:", data);
+			
+			const usuario = data.jugador;  // Nombre del jugador
+			const mesaId = data.mesa;      // Nombre de la mesa creada
+			const indice = data.indice;    // Número de asiento
+
+			console.log("Mesa: " + mesaId + " | Jugador: " + usuario + " | Índice: " + indice);
+
+			// Obtener el elemento de la mesa
+			const mesaElement = document.querySelector(`[data-mesa-id="${mesaId}"]`);
+			if (!mesaElement) {
+				console.error("No se encontró la mesa con ID:", mesaId);
+				return;
+			}
+
+			const asientos = mesaElement.querySelectorAll('.jugador');
+			if (asientos.length === 0 || !asientos[indice]) {
+				console.error("Índice de asiento inválido o no encontrado.");
+				return;
+			}
+
+			const asiento = asientos[indice];
+
+			// Limpiar la ocupación del asiento
+			asiento.style.backgroundImage = "";
+			asiento.nextElementSibling.textContent = `Jugador ${indice + 1}`;
+			asiento.classList.remove('ocupado');
+			asiento.removeAttribute("data-username");
+
+			alert(data.message);
+		});
+
+		// Escuchar errores del servidor
+		socket.on('error', function(data) {
+			alert(data.message);
+		});
+	
 	</script>
 </body>
 </html>

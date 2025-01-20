@@ -461,7 +461,7 @@ def handle_join(data):
     if username and username not in logged_players:
         logged_players.append(username)
     emit('update_players', logged_players, broadcast=True)  # Envía la lista de usuarios a todos los clientes
-    emit('update_screen', tables, broadcast=False) # envía la lista de mesas solo al cliente recien conectado
+    emit('update_tables', tables, broadcast=False) # envía la lista de mesas solo al cliente recien conectado
 
 @socketio.on('connect')
 def handle_connect():
@@ -475,7 +475,6 @@ def handle_connect():
     # Emitir la lista actualizada de jugadores a todos los clientes
     #emit('update_players', logged_players, broadcast=True)
     # Emitir el estado actual de las mesas solo al cliente recién conectado
-    #emit('update_screen', tables, broadcast=False) 
 
 @socketio.on('disconnect')
 def handle_disconnect(): 
@@ -549,23 +548,6 @@ def join_mesa(data):
         join_room(str(mesa_id))  # Une al cliente a la sala de la mesa  
         print(f"{username} se unió a la room {mesa_id}")
    
-    '''
-    print("Asiento en entrar: ", asiento, " Table: ", mesa_id, " usuario: ", username, " avatar: ", avatar)
-    #if table_id in tables and tables[table_id][asiento] is None:
-    mesa = tables[mesa_id]
-    if mesa["jugadores"][asiento] is None:
-        mesa["jugadores"][asiento] = username
-        mesa["avatares"][asiento] = avatar
-        tables[mesa_id] = mesa  # Guardar cambios
-    print(f"{username} entró en el asiento {asiento} de {mesa_id} con el avatar {avatar}")
-
-    # Agregar el username a la sala
-    if mesa_id not in salas:
-        salas[mesa_id] = []
-    salas[mesa_id].append(username)
-    emit('chat_message', {'message': f"{username} se ha unido a la mesa {mesa_id}.", 'username': 'Docemas'}, to=mesa_id)
-    emit('update_tables', tables, broadcast=True)
-    '''
 
 @socketio.on('entrar_asiento')
 def handle_entrar_asiento(data):
@@ -573,7 +555,18 @@ def handle_entrar_asiento(data):
     mesa_id = data['mesa_id']
     asiento = data['asiento']
     avatar = data['avatar']
+    numeroMesa = int(mesa_id.split('_')[1]) 
     print("Asiento en entrar: ", asiento, " Table: ", mesa_id, " usuario: ", username, " avatar: ", avatar)
+
+    # En el caso en el que el jugador ya estuviera en una mesa y quiere entrar a otra
+    for id_mesa, mesa in tables.items():
+        if username in mesa['jugadores']:
+            if mesa_id != id_mesa:
+                print(f"DEBUG ACCESO. Jugador {username} estaba jugando en la mesa: {id_mesa}")
+                emit('chat_message', {'message': f"{username} ya estás en la {id_mesa}.", 'username': 'Docemas'}, broadcast=False)
+                emit('errorAsiento', {'message': f"{username} ya estás ocupando la {id_mesa}.", 'jugador': username, 'indice': asiento, 'mesa':  mesa_id},  broadcast=False)
+                return render_template('sala_espera.html',usuario=username,avatar=avatar)
+
     join_room(mesa_id)  # Une al cliente a la sala de la mesa  
     #if table_id in tables and tables[table_id][asiento] is None:
     mesa = tables[mesa_id]
@@ -582,7 +575,6 @@ def handle_entrar_asiento(data):
         mesa["avatares"][asiento] = avatar
         tables[mesa_id] = mesa  # Guardar cambios
     print(f"{username} entró en el asiento {asiento} de {mesa_id} con el avatar {avatar}")
-    numeroMesa = int(mesa_id.split('_')[1]) 
     # Agregar el username a la sala
     if mesa_id not in salas:
         salas[mesa_id] = []
@@ -591,6 +583,7 @@ def handle_entrar_asiento(data):
     # Emitir un mensaje solo a los de la room notificando el nuevo jugador
     emit('chat_message', {'message': f"{username} se ha unido a la mesa {numeroMesa}.", 'username': 'Docemas'}, to=mesa_id)
     emit('update_tables', tables, broadcast=True) # Emitir un mensaje a todos en la sala notificando el nuevo jugador
+
 
 @socketio.on('salir_asiento')
 def handle_salir_asiento(data):
@@ -708,22 +701,49 @@ def iniciar_partida(data):
     #print("Evento iniciar_partida recibido con datos:", data)
     table_id = data.get('table_id')
     mesa = tables.get(table_id)
+    jugadores = mesa.get('jugadores', [])
+    # Filtrar jugadores válidos (excluyendo None o vacíos)
+    jugadoresEnMesa = [j for j in jugadores if j is not None and j != ""]
+    #print("INICIAR PARTIDA. JUGADORES EN LA MESA", jugadores)
+    if len(jugadoresEnMesa) < 4:
+        jugadores_faltantes = 4 - len(jugadoresEnMesa)
+        #print("INICIAR PARTIDA. FALTAN JUGADORES EN LA MESA", jugadores_faltantes)
+        emit('error', {'message': f"La mesa no está completa. Faltan {jugadores_faltantes} jugadores."},  broadcast=False)
+        usuario = session.get('usuario')
+        avatar = session['avatar']  
+        return render_template('sala_espera.html',usuario=usuario,avatar=avatar)
+
     inicializar_partida(table_id)
-    #print(f"El VALOR DEL ÍNDICE DEL mano es: {mano} )")
+   # print(f"INICIAR PARTIDA Se va a iniciar la partida en {table_id}. Primero se actualiza sala de espera.)")
     try:
+        emit('update_tables', tables, broadcast=True)
+       # print(f"INICIAR PARTIDA Se LLMAMA A PARTIDA INICIADA. Primero se actualiza sala de espera.)")
         emit('partida_iniciada', { 'mesa_id': table_id, 'mesa': mesa}, to=table_id)
 
     except Exception as e:
         print(f"Error al iniciar la partida: {e}")
 
 @socketio.on('reiniciar_partida')
-def iniciar_partida(data):
+def reiniciar_partida(data):
     table_id = data.get('table_id')
     mesa = tables.get(table_id)
+
+    jugadores = mesa.get('jugadores', [])
+    # Filtrar jugadores válidos (excluyendo None o vacíos)
+    jugadoresEnMesa = [j for j in jugadores if j is not None and j != ""]
+    #print("INICIAR PARTIDA. JUGADORES EN LA MESA", jugadores)
+    if len(jugadoresEnMesa) < 4:
+        jugadores_faltantes = 4 - len(jugadoresEnMesa)
+       # print("INICIAR PARTIDA. FALTAN JUGADORES EN LA MESA", jugadores_faltantes)
+        emit('error', {'message': f"La mesa no está completa. Faltan {jugadores_faltantes} jugadores."},  broadcast=False)
+        usuario = session.get('usuario')
+        avatar = session['avatar']  
+        return render_template('sala_espera.html',usuario=usuario,avatar=avatar)
+
     inicializar_mesa(mesa, table_id)
     inicializar_partida(table_id)
     #print("Mesa:", mesa)
-    print("Va a llamar a reiniciar_nueva_partida. table_id: ", table_id)
+   # print("Va a llamar a reiniciar_nueva_partida. table_id: ", table_id)
     emit('reiniciar_nueva_partida', { 'mesa_id': table_id}, to=table_id)
 
 # Función que inicializa la mesa para nueva partida
@@ -741,9 +761,7 @@ def inicializar_partida(table_id):
     ###### Simulación de cuatro jugadores en mesa. Es para pruebas con un un usuario logado:
     #tables[table_id]["jugadores"] = ['Gordiano1', 'Gordiano10', 'Gordiano11', 'Gordiano12']
     #tables[table_id]["avatares"] = ['../static/img/avatares/avatar19.png', '../static/img/avatares/avatar99.png', '../static/img/avatares/avatar9.png', '../static/img/avatares/avatar111.png']
- 
         mesa = tables.get(table_id)
-
 
 @socketio.on('actualizar_mesa')
 def handle_actualizar_mesa(data):

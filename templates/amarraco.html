@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animación de Amarracos con CSS y JS</title>
+    <style>
+        body {
+            background-color: #2c3e50;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            position: relative;
+        }
+        .mesa {
+            width: 80%;
+            height: 60vh;
+            background: url('../static/img/mesa_mus.png') no-repeat center center;
+            background-size: contain;
+            position: relative;
+        }
+        .amarraco {
+            width: 50px;
+            height: 50px;
+            background: url('../static/img/amarraco.png') no-repeat center center;
+            background-size: cover;
+            position: absolute;
+            opacity: 0;
+            transition: transform 1s ease-in-out, opacity 1s ease-in-out;
+        }
+        .boton {
+            position: absolute;
+            bottom: 20px;
+            padding: 15px 30px;
+            background-color: #8b4513;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: background-color 0.3s;
+        }
+        .boton:hover {
+            background-color: #a0522d;
+        }
+    </style>
+</head>
+<body>
+    <div class="mesa" id="mesa">
+        <button class="boton" onclick="agregarAmarracos(5)">Añadir Amarracos</button>
+    </div>
+
+    <script>
+        function agregarAmarracos(cantidad) {
+            const mesa = document.getElementById('mesa');
+            mesa.innerHTML = '<button class="boton" onclick="agregarAmarracos(5)">Añadir Amarracos</button>';
+            
+            let centerX = mesa.clientWidth / 2;
+            let centerY = mesa.clientHeight / 2;
+
+            for (let i = 0; i < cantidad; i++) {
+                let amarraco = document.createElement('div');
+                amarraco.classList.add('amarraco');
+                amarraco.style.left = `${Math.random() * mesa.clientWidth}px`;
+                amarraco.style.top = `${Math.random() * mesa.clientHeight}px`;
+                mesa.appendChild(amarraco);
+                
+                setTimeout(() => {
+                    let offsetX = (Math.random() - 0.5) * 100;
+                    let offsetY = (Math.random() - 0.5) * 100;
+                    amarraco.style.opacity = '1';
+                    amarraco.style.transform = `translate(${centerX - 25 + offsetX}px, ${centerY - 25 + offsetY}px)`;
+                }, 100 * i);
+            }
+        }
+    </script>
+</body>
+</html>
