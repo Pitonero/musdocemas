@@ -64,6 +64,10 @@ def politicaprivacidad():
     print("DEBUG. Entra para lanzar politicaprivacidad.html")
     return render_template('politicaprivacidad.html')
 
+@app.route('/politicacookies')
+def politicacookies():
+    return render_template('/politica-cookies.html')
+
 @app.route('/terminosservicio')
 def terminosservicio():
     print("DEBUG. Entra para lanzar terminosservicio.html")

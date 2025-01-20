@@ -81,6 +81,34 @@
     animation: fadeIn 0.5s ease;
 }
 
+        .cookie-banner {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            text-align: center;
+            padding: 15px;
+            display: none;
+        }
+        .cookie-banner a {
+            color: #f1c40f;
+            text-decoration: underline;
+        }
+        .cookie-banner button {
+            margin: 5px;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+        }
+        #accept-cookies {
+            background-color: #28a745;
+            color: white;
+        }
+        #reject-cookies {
+            background-color: #dc3545;
+            color: white;
+        }
 
     </style>	
 </head>
@@ -88,7 +116,7 @@
     <!-- Encabezado con logo e ítems de navegación -->
     <header>
 		<div style="display: flex; align-items: center;">
-			<img src="../static/img/logomus.png" alt="Logo de Mus 12 Más" onclick="window.history.back(-1)" style="width: 50px; margin-right: 10px;">
+			<img src="../static/img/logomus.png" alt="Logo de Mus 12 Más" onclick="window.location.href='/'" style="width: 50px; margin-right: 10px;">
 			<h1 style="margin: 0;">Doce Más</h1>
 		</div>
 
@@ -102,6 +130,14 @@
             </ul>
         </nav>
     </header>
+	
+	    <!-- Banner de Cookies -->
+    <div id="cookie-banner" class="cookie-banner">
+        <p>Utilizamos cookies para mejorar tu experiencia. <a href="{{url_for('politicacookies')}}" target="_blank">Más información</a></p>
+        <button id="accept-cookies">Aceptar</button>
+        <button id="reject-cookies">Rechazar</button>
+    </div>
+
     <!-- Sección principal con bienvenida e introducción -->
     <main>
         <section class="intro">
@@ -136,9 +172,31 @@
             <a href="{{url_for('ranking')}}" class="secondary-button">Ver clasificación</a>
         </section>
     </main>
+	
 	<script>
 		//const socket = io.connect(); // Conexión al servidor
-		
+
+		document.addEventListener("DOMContentLoaded", function() {
+			// Verificar si el usuario ha aceptado las cookies previamente
+			if (localStorage.getItem("cookiesAccepted") === "true") {
+				console.log("El usuario ya aceptó las cookies. No se muestra el banner.");
+			} else {
+				document.getElementById("cookie-banner").style.display = "block";
+			}
+
+			// Evento para aceptar cookies
+			document.getElementById("accept-cookies").addEventListener("click", function() {
+				localStorage.setItem("cookiesAccepted", "true");
+				document.getElementById("cookie-banner").style.display = "none";
+			});
+
+			// Evento para rechazar cookies
+			document.getElementById("reject-cookies").addEventListener("click", function() {
+				localStorage.setItem("cookiesAccepted", "false");
+				document.getElementById("cookie-banner").style.display = "none";
+			});
+		});
+				
 		document.getElementById("openModal").onclick = function() {
 			fetch("/noticias")
 			.then(response => response.text())
