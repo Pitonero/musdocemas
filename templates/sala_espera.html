@@ -16,7 +16,7 @@
 }*/
 
 .mesa.mesa-en-juego h3 {
-    color: green;
+    color: red;
     font-weight: bold;
 }
 
@@ -250,7 +250,18 @@
 						console.log(`Estado de la mesa ${mesaId} actualizado a: ${estadoMesa}`);
 					}
 				}
-				
+	
+				// Ocultar el botón de "Comenzar" si la mesa está en juego
+				const botonComenzar = mesaElement.querySelector('.boton-comenzar');
+				console.log("Estado mesa: ", estadoMesa, " botoncomezar: ", botonComenzar);
+				if (estadoMesa === "En juego" && botonComenzar) {
+					botonComenzar.style.display = 'none';
+					console.log(`Botón "Comenzar" ocultado en ${mesaId}`);
+				} else if (estadoMesa === "En espera" && botonComenzar) {
+					botonComenzar.style.display = 'block';
+				}
+	
+				// Aplicar estilos según el estado de la mesa
 				if (estadoMesa === "En juego") {
 					mesaElement.classList.add('mesa-en-juego');
 					mesaElement.classList.remove('mesa-en-espera');
@@ -259,7 +270,7 @@
 					mesaElement.classList.remove('mesa-en-juego');
 				}
 				
-				// Seleccionar todos los elementos de los asientos de la mesa
+				 // Actualizar jugadores en la mesa
 				const asientos = mesaElement.querySelectorAll('.jugador');
 				console.log(`Asientos encontrados en ${mesaId}: ${asientos.length}`);
 

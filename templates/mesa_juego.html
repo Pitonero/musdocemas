@@ -82,6 +82,7 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+			box-sizing: border-box;
             display: grid;
             grid-template-rows: 1fr auto 1fr;
             grid-template-columns: 1fr auto 1fr;
@@ -97,18 +98,21 @@
         }
 
         /* Tablero de Puntuación */
-
+		
 .tablero {
   position: absolute;
   top: 20px;
   left: 20px;
-  background-color: #3a3354;
+  background-color: #2a2a2a;
   color: #ffffff;
-  padding: 15px;
+  padding: 10px;
+  margin: 10px; /* Ajusta el margen alrededor del tablero */
   border-radius: 8px;
   text-align: center;
-  width: 250px;
-  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.5);
+  width: auto;
+  min-width: 250px;
+  display: block; /* Cambiar de inline-block a block */
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.7); 
 }
 
 .tablero h2 {
@@ -899,7 +903,7 @@ button:active {
     <div class="contenedor">
         <!-- Mesa de Juego -->
         <div class="mesa-de-juego">
-            <!-- Tablero de Puntuación -->
+        <!-- Tablero de Puntuación -->
         <p></p>
 			<div class="tablero">
 			  <table class="puntuacion-tabla">
@@ -923,7 +927,6 @@ button:active {
 				  </tr>
 				</tbody>
 			  </table>
-
 			</div>		<!-- Jugadores -->	
 			<div class="turno-notificacion oculto" id="turnoNotificacion">Hola</div>	
 			<div class="jugador jugador-1">
@@ -1963,6 +1966,12 @@ button:active {
     }
 
 	// Escuchar mensajeserrores del servidor
+    function mostrarAccion(mensaje) {
+ 		turnoNotificacion.textContent = `${mensaje}`;
+		turnoNotificacion.classList.remove("oculto");
+	}
+	
+	// Escuchar mensajeserrores del servidor
 	socket.on('mostrarMensaje', function(data) {
 		const usuario = "{{ usuario }}";  
 		const jugadorDescarta = data.jugador;
@@ -2161,7 +2170,8 @@ button:active {
 		let apuesta = mesa.apuesta[indiceApuesta];
 		let apuestaLance = apuesta;
 		let hablar = accion; 
-
+		let hablar2 = "envida";
+		
 		// Inicializamos con 2 el valor de envido.	
 		let valorEnvido = 2;
 		const spanEnvido = document.getElementById('valor-envido');
@@ -2175,24 +2185,34 @@ button:active {
 		if ((apuesta === 0) || (apuesta === 2) || (apuestaActual === apuesta)) { 
 			if (apuesta >= 3) {
 			hablar = accion + " " + apuestaActual; 
+			hablar2 = "envida" + " " + apuestaActual;
 			} else {
 				hablar = accion;
 			}
 		} else { 
 		//	hablar = accion + " " + apuestaActual + " y van " + apuesta; 
 			hablar = apuestaActual + " más y van " + apuesta; 
+			hablar2 = "envida " + apuestaActual + " más y van " + apuesta; 
 		}
-		 
-		const manoJugadorIdx = reorganizedJugadores.findIndex(jugador => jugador === jugadorAnterior);	
+		if (accion === "Veo") {
+			hablar2 = " ve la apuesta";
+		}
+		if (accion === "Paso") {
+			hablar2 = " pasa";
+		}		 
 		
 		if (apuesta >= 40) {
-			mensaje = turnoJugador + " lanza un ÓRDAGO";
+			mensaje = jugadorAnterior + " lanza un ÓRDAGO";
 			hablar = "¡¡¡ÓRDAGO!!!";
 		} else {
-			mensaje = turnoJugador + " " + hablar;
+			mensaje = jugadorAnterior + " " + hablar2;
 		}
-		console.log("Lance: ", lanceActual, " habla ", turnoJugador, " y dice: ", hablar);
+		mostrarAccion(mensaje);
+		
+		console.log("Accion: ", accion, "Lance: ", lanceActual, " habla ", jugadorAnterior, " y dice: ", hablar);
 		//console.log('Estado actualizado. manoJugadorIdx: ', manoJugadorIdx, " reorganizedJugadores: ", reorganizedJugadores);
+
+		const manoJugadorIdx = reorganizedJugadores.findIndex(jugador => jugador === jugadorAnterior);	
 		mostrarBocadillo2(manoJugadorIdx, hablar);	
 		
 		// Actualizar marcador
@@ -2204,7 +2224,8 @@ button:active {
 		document.getElementById('juegos-pareja2').textContent = mesa.juegos[1];
 
 		// Actualizar turno
-		mostrarTurno(turnoJugador);
+		//mostrarTurno(turnoJugador);
+
 		console.log('Estado actualizado. es el turno de: ', turnoJugador, " jugador cliente: ", jugadorActual, " juagodor anterior: ", jugadorAnterior);
 
 		// Actualizar lanceturno
