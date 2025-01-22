@@ -42,9 +42,6 @@ partidas = {}
 tables = {}
 salas = {}  # Diccionario para rastrear usuarios en cada sala
 table_counter = 1  # Contador global para las mesas
-puntos_juego = 40 # valor de puntos en un juego
-juegos_vaca = 2  # valor de juegos en una vaca
-
 
 @app.route('/')
 def index():
@@ -338,7 +335,10 @@ def storage():
     if nombrep=='' or correo == '' or alias=='' or password=='':
         print("DEBUG. Faltan por rellenar campos ")         
         return render_template('registro.html', nombrep=nombrep,usuario=alias,password=password,correo=correo,mensaje='Recuerda rellenar todos los campos.')
- 
+     
+    if nombrep=='Bot1' or nombrep=='Bot2' or nombrep=='Bot3':
+        print("DEBUG. Nombres reservados para los Bots.")         
+        return render_template('registro.html', nombrep=nombrep,usuario=alias,password=password,correo=correo,mensaje='Ya existe este nombre de usuario.')
 
     # Verificamos que el email sea único
     datosusuario, leidos=CUsuarios.leerEmail(correo)
@@ -379,13 +379,14 @@ def storage():
             session['nombre'] = nombrep 
             session['avatar'] = avatar_url
             return render_template('entrarajugar.html',usuario=alias,nombre=nombrep,avatar=avatar_url)
+    '''
     else:  
         CUsuarios.modificarActivacion(alias)
         session['usuario'] = alias
         session['nombre'] = nombrep 
         session['avatar'] = avatar_url
         return render_template('entrarajugar.html',usuario=alias,nombre=nombrep,avatar=avatar_url)
-
+    '''
 
 @app.route('/acceso', methods=['POST'])
 def acceso():
@@ -633,6 +634,10 @@ def handle_message(data):
 def handle_create_table(data):
 
     username = data['usuario']
+    juegos_vaca = data['num_juegos']
+    puntos_juego = data['puntos_por_juego']
+    tiempo_espera = data['tiempo_espera']
+    admitir_bots = data['admitir_bots']
 
     for table in tables.values():
         if table['owner'] == username:
@@ -645,6 +650,10 @@ def handle_create_table(data):
     tables[table_id] = {
         "nombre": f"Mesa_{table_counter}",
         "owner": username,
+        "juegos_vaca": juegos_vaca,
+        "puntos_juego": puntos_juego, 
+        "espera": tiempo_espera,
+        "bots": admitir_bots,
         "estado": "En espera",
         "jugadores": [None, None, None, None],  # Asientos vacíos
         "avatares": [None, None, None, None],  # Avatares vacíos
@@ -817,8 +826,8 @@ def handle_repartir_cartas(data):
         print("cartas repartidas manos:", manos)
         
         emit('mensaje_mesa', {'msg': f"Reparte {jugador_anterior}. {jugador_turno} habla.", 'username': 'Nueva ronda' }, to=mesa_id)
-
-        # Emitir las cartas repartidas a los jugadores
+ 
+         # Emitir las cartas repartidas a los jugadores
         emit('cartas_repartidas', {'mesa_id': mesa_id, 'manos': manos, 'mano': mano},  to=mesa_id)
 
     except KeyError as e:
@@ -1199,13 +1208,16 @@ def manejar_accion(data):
 
     envido = data.get('envido', 0)  # Valor del envido si aplica
 
+    # Recuperar la mesa
+    mesa = tables.get(mesa_id)
+    puntos_juego = mesa['puntos_juego']
+
     if accion == "Órdago": 
         envido = puntos_juego  # Órdago tiene un valor alto fijo de la variable global puntos_juego  
         acciona = "lanza un ¡¡¡ÓRDAGO!!!"
 
     print(f"[DEBUG] Manejar Acción. Mesa_id: {mesa_id}, Jugador: {jugador}, Acción: {accion}, Apuesta: {envido}")
-    # Recuperar la mesa
-    mesa = tables.get(mesa_id)
+
     #debug_manos(mesa)
     mesa['estado_partida'] = "Jugar"
     # Validar que 'lance_actual' no sea None
@@ -1245,9 +1257,9 @@ def manejar_accion(data):
             print("[DEBUG] Manejar Acción: Estado actualizado 1 desde ", mesa['lance_actual'], " - ", accion)
             emit('estado_actualizado', mesa, to=mesa_id)
             return 
-        
+            
         if accion == "Veo":
-            if mesa["apuesta"][indice_apuesta] >= puntos_juego: # Se ve el Órdago, vamos directamente a ver el ganador
+            if mesa["apuesta"][indice_apuesta] >= mesa['puntos_juego']: # Se ve el Órdago, vamos directamente a ver el ganador
                 if mesa["lance_actual"] == "Grande":
                     determinar_ganador_grande(mesa)
                 elif mesa["lance_actual"] == "Chica":
@@ -1306,7 +1318,7 @@ def manejar_accion(data):
             return
 
         elif accion == "Veo":
-            if mesa["apuesta"][indice_apuesta] >= puntos_juego: # Se ve el Órdago, vamos directamente a ver el ganador
+            if mesa["apuesta"][indice_apuesta] >= mesa['puntos_juego']: # Se ve el Órdago, vamos directamente a ver el ganador
                 determinar_ganador_pares(mesa)
                 return
             else: 
@@ -1359,9 +1371,9 @@ def manejar_accion(data):
             emit('mensaje_mesa', {'msg': f"{jugador} {acciona}.", 'username': mesa['lance_actual']}, to=mesa_id)
             emit('estado_actualizado', mesa, to=mesa_id)
             return
-
+        
         if accion == "Veo":
-            if mesa["apuesta"][indice_apuesta] >= puntos_juego: # Se ve el Órdago, vamos directamente a ver el ganador
+            if mesa["apuesta"][indice_apuesta] >= mesa['puntos_juego']: # Se ve el Órdago, vamos directamente a ver el ganador
                 determinar_ganador_juego(mesa)
                 return
             else: 
@@ -2027,7 +2039,7 @@ def registrar_lance(mesa, ganador, lance, apuesta_actual, estado_apuesta):
     mesa["apuesta_anterior"] = 0
     mesa["apuesta_actual"] = 0
 
-    if mesa["puntos"][0] >= puntos_juego or mesa["puntos"][1] >= puntos_juego:
+    if mesa["puntos"][0] >= mesa['puntos_juego'] or mesa["puntos"][1] >= mesa['puntos_juego']:
         emitir_actualizar_interfaz(mesa)
         verificar_finaliza_juego_partida(mesa)
         return 
@@ -2114,6 +2126,8 @@ def emitir_actualizar_interfaz(mesa):
         "juego": mesa['juego'],  
         "punto": mesa['punto'],
         "manos": mesa['manos'],
+        "juegos_vaca": mesa['juegos_vaca'],
+        "puntos_juego": mesa['puntos_juego'],
         "apuesta": apuesta
     }, to=mesa_id)
 
@@ -2125,7 +2139,7 @@ def verificar_finaliza_juego_partida(mesa):
 
     # Validar si alguna pareja supera el valor de puntos_juego
     for equipo, puntos in enumerate(mesa["puntos"]):
-        if puntos >= puntos_juego:
+        if puntos >= mesa['puntos_juego']:
             mesa["juegos"][equipo] += 1  
             mesa["puntos"] = [0,0]  
             emit('mensaje_mesa', {'msg': f"¡La pareja {equipo + 1} ha ganado el juego con {puntos} puntos!", 'username': mesa['lance_actual']}, to=mesa_id)
@@ -2133,7 +2147,7 @@ def verificar_finaliza_juego_partida(mesa):
 
     # Validar si alguna pareja supera el valor de la variable global juegos_vaca
     for equipo, juegos in enumerate(mesa["juegos"]):
-        if juegos >= juegos_vaca:
+        if juegos >= mesa['juegos_vaca']:
             mesa["juegos"] = [0,0]  
             mesa["puntos"] = [0,0]  
             emit('mensaje_mesa', {'msg': f"¡La pareja {equipo + 1} ha ganado la partida. Gana los {juegos} juegos!", 'username': 'Final'}, to=mesa_id)
@@ -2225,9 +2239,9 @@ def determinar_ganador_grande(mesa):
     # Determinar el equipo ganador usando las parejas
     equipo = parejas[ganador]
 
-    if mesa["apuesta"][0] >= puntos_juego:  # Se valida el ganador si hay Órdago
-        mesa["puntos"][equipo] += puntos_juego
-        mesa["grande"][equipo] += puntos_juego
+    if mesa["apuesta"][0] >= mesa['puntos_juego']:  # Se valida el ganador si hay Órdago
+        mesa["puntos"][equipo] += mesa['puntos_juego']
+        mesa["grande"][equipo] += mesa['puntos_juego']
         # Emitir actualizar_interfaz_ronda
         emitir_actualizar_interfaz(mesa)
         verificar_finaliza_juego_partida(mesa)
@@ -2302,9 +2316,9 @@ def determinar_ganador_chica(mesa):
     # Determinar el equipo ganador usando las parejas
     equipo = parejas[ganador]
 
-    if mesa["apuesta"][1] >= puntos_juego:  # Se valida el ganador si hay Órdago
-        mesa["puntos"][equipo] += puntos_juego
-        mesa["grande"][equipo] += puntos_juego
+    if mesa["apuesta"][1] >= mesa['puntos_juego']:  # Se valida el ganador si hay Órdago
+        mesa["puntos"][equipo] += mesa['puntos_juego']
+        mesa["grande"][equipo] += mesa['puntos_juego']
         # Emitir actualizar_interfaz_ronda
         emitir_actualizar_interfaz(mesa)        
         verificar_finaliza_juego_partida(mesa)
@@ -2415,9 +2429,9 @@ def determinar_ganador_pares(mesa):
     equipo = parejas[ganador]
     compañero = [j for j in jugadores if parejas[j] == equipo and j != ganador][0]
 
-    if mesa["apuesta"][2] >= puntos_juego:  # Se valida el ganador si hay Órdago
-        mesa["puntos"][equipo] += puntos_juego
-        mesa["grande"][equipo] += puntos_juego
+    if mesa["apuesta"][2] >= mesa['puntos_juego']:  # Se valida el ganador si hay Órdago
+        mesa["puntos"][equipo] += mesa['puntos_juego']
+        mesa["grande"][equipo] += mesa['puntos_juego']
         # Emitir actualizar_interfaz_ronda
         emitir_actualizar_interfaz(mesa)
         verificar_finaliza_juego_partida(mesa)
@@ -2519,9 +2533,9 @@ def determinar_ganador_juego(mesa):
     # Determinar el equipo del ganador
     equipo = parejas[ganador]
 
-    if mesa["apuesta"][3] >= puntos_juego:  # Se valida el ganador si hay Órdago
-        mesa["puntos"][equipo] += puntos_juego
-        mesa["grande"][equipo] += puntos_juego
+    if mesa["apuesta"][3] >= mesa['puntos_juego']:  # Se valida el ganador si hay Órdago
+        mesa["puntos"][equipo] += mesa['puntos_juego']
+        mesa["grande"][equipo] += mesa['puntos_juego']
         # Emitir actualizar_interfaz_ronda
         emitir_actualizar_interfaz(mesa)
         verificar_finaliza_juego_partida(mesa)
@@ -2613,9 +2627,9 @@ def determinar_ganador_punto(mesa):
     }
     equipo = parejas[ganador]
 
-    if mesa["apuesta"][4] >= puntos_juego:  # Se valida el ganador si hay Órdago
-        mesa["puntos"][equipo] += puntos_juego
-        mesa["grande"][equipo] += puntos_juego
+    if mesa["apuesta"][4] >= mesa['puntos_juego']:  # Se valida el ganador si hay Órdago
+        mesa["puntos"][equipo] += mesa['puntos_juego']
+        mesa["grande"][equipo] += mesa['puntos_juego']
         # Emitir actualizar_interfaz_ronda
         emitir_actualizar_interfaz(mesa)
         verificar_finaliza_juego_partida(mesa)
@@ -2801,6 +2815,94 @@ def procesar_lance_juego(mesa):
     # Si ninguno tiene juego
     if all(not j["tiene_juego"] for j in estado_juego):
         print("[DEBUG] Ningún jugador tiene juego. Cambiando a Punto.")
+
+#####################################################################
+# Función que devuelve una respuesta del bot cuando el turno es suyo
+#####################################################################
+
+    #print(decision_mus_o_corto(mesa))
+    #print(respuesta_bot(mesa))
+
+import random
+
+def decision_mus_o_corto(mesa):
+    def evaluar_mano():
+        mano_bot = mesa['manos'][mesa['jugadores'][mesa['turno_actual']]]
+        cartas = [int(carta[:-1]) for carta in mano_bot]
+        return sorted(cartas, reverse=True)
+
+    mano_bot = evaluar_mano()
+    juego = sum(mano_bot) in [31, 32, 40]
+    pares = len(set(mano_bot)) < len(mano_bot)
+    medias_duples = any(mano_bot.count(carta) == 2 for carta in mano_bot)
+    
+    if mano_bot.count(12) >= 2 and not (juego or pares or medias_duples):
+        return 'Mus'
+    else:
+        return 'Corto'
+
+def respuesta_bot(mesa):
+    estadobot = None
+
+    def modo_juego():
+        nonlocal estadobot
+        puntos_contrarios = mesa['puntos'][1] if mesa['jugadores'][0] in mesa['pareja_contraria'] else mesa['puntos'][0]
+        if 1 <= puntos_contrarios <= 30:
+            estadobot = 'conservador' if random.random() > 0.1 else 'agresivo'
+        else:
+            estadobot = 'agresivo'
+        if puntos_contrarios >= 37:
+            estadobot = 'agresivo'
+
+    def evaluar_mano():
+        mano_bot = mesa['manos'][mesa['jugadores'][mesa['turno_actual']]]
+        cartas = [int(carta[:-1]) for carta in mano_bot]
+        return sorted(cartas, reverse=True)
+
+    def decision_estandar():
+        lance_actual = mesa['lance_actual']
+        acciones = mesa['acciones']
+        if acciones[mesa['lances'].index(lance_actual)] == 'Paso':
+            if lance_actual == 'Grande' and evaluar_mano().count(12) >= 2:
+                return 'Envido'
+            elif lance_actual == 'Chica' and evaluar_mano().count(1) >= 2:
+                return 'Envido'
+            elif lance_actual == 'Pares' and len(set(evaluar_mano())) < len(mesa['manos'][mesa['jugadores'][mesa['turno_actual']]]):
+                return 'Envido'
+            elif lance_actual == 'Juego' and sum(evaluar_mano()) == 31:
+                return 'Subo 5' if mesa['turno_actual'] == mesa['mano'] else 'Envido'
+            elif lance_actual == 'Punto' and sum(evaluar_mano()) in [29, 30]:
+                return 'Subo 5' if mesa['turno_actual'] == mesa['mano'] else 'Envido'
+        return 'Paso'
+
+    def decision_con_apuesta():
+        if mesa['accion'] == 'Órdago' or mesa['apuesta_actual'] > 12:
+            if mesa['lance_actual'] == 'Grande' and (evaluar_mano().count(12) >= 3 or (evaluar_mano().count(12) >= 2 and sum(mesa['puntos']) > 30)):
+                return 'Veo'
+            if mesa['lance_actual'] == 'Chica' and (evaluar_mano().count(1) >= 3 or (evaluar_mano().count(1) >= 2 and sum(mesa['puntos']) > 30)):
+                return 'Veo'
+        return 'Paso'
+
+    def decision_farol():
+        opciones = ['Paso', 'Envido', f'Subo {random.choice([2, 5, 10])}', 'Órdago']
+        return random.choice(opciones)
+
+    modo_juego()
+    decision = decision_estandar() if mesa['apuesta_actual'] == 0 else decision_con_apuesta()
+    
+    if estadobot == 'agresivo':
+        if 'Subo' in decision:
+            nueva_apuesta = int(decision.split()[1]) + random.choice([2, 5])
+            decision = f'Subo {nueva_apuesta}'
+        elif decision == 'Paso':
+            decision = 'Envido'
+    
+    if random.random() < 0.2:
+        return decision_farol()
+    
+    return decision
+
+##############################################################################################
 
 
 

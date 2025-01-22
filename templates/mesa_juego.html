@@ -891,8 +891,9 @@ button:active {
     <!-- Encabezado -->
 <header class="cabecera">
     <h1>
-         Musdocemas - Mesa de Juego {{ mesa.nombre.split('_')[1] }} - 
-        <span class="usuario"> {{ usuario }}</span>
+         Musdocemas - Mesa de Juego {{ mesa.nombre.split('_')[1] }} 
+        <span class="usuario"> - {{ usuario }} - </span>
+		<span class="partida" id="partida"></span>
     </h1>
 	<nav>
 		<a href="{{ url_for('logout2') }}" class="btn btn-danger">Desconectar</a>
@@ -1120,6 +1121,14 @@ button:active {
 			const mano = mesa.mano; // Índice del jugador que es mano
 			const manoJugador = jugadores[mano]; // Nombre del jugador que es mano
 			const jugadorTurno = manoJugador;
+			let partida = "";
+			if (mesa.juegos_vaca === 1) {
+				partida = "Partida al mejor de 1 juego de " + mesa.puntos_juego;
+			} else {
+				partida = "Partida al mejor de " + mesa.juegos_vaca + " juegos de " + mesa.puntos_juego;
+			}
+			document.getElementById('partida').innerHTML = '<span style="font-size: 14px;">' + partida + '</span>';
+			
 			console.log("ACTUALIZAR MESA:", mesa, "JugadorTurno en ActualizarMesa: ", jugadorTurno);
 			let reparte = 0;
 			if (mano === 0) {
@@ -1367,8 +1376,6 @@ button:active {
 			//actualizarMazo(jugadorAnterior, valor);		    
 			
 			// Enviar mensaje al chat informando
-			const mensaje = "La partida es al mejor de dos juegos de 40.";
-			socket.emit('mensaje_chat_mesa', { mesa_id: mesaId, username: 'Docemas', message: mensaje });
 			const mensaje2 = "Repartiendo cartas...";
 			socket.emit('mensaje_chat_mesa', { mesa_id: mesaId, username: 'Docemas', message: mensaje2 });
 			
@@ -1396,8 +1403,9 @@ button:active {
 			}			
 			const manos = data.manos;
 			const mano = data.mano;
+
 			//alert("Entra por cartas_repartidas y Asignar las cartas a cada jugador");
-			console.log("Manos: ", manos);
+			console.log("Manos: ", manos, " partida: ", partida);
 
 			// Ocultar el botón repartir y habilita corto y mus una vez que se entra desde el servidor
 			const btnRepartir = document.getElementById("btn-repartir");
@@ -2394,6 +2402,8 @@ button:active {
 		const jugadorAnterior = data.jugadorAnterior;
 		const manos = data.manos;
 		const apuesta = data.apuesta;
+		const juegos_vaca = data.juegos_vaca;
+		const puntos_juego = data.puntos_juego;
 		console.log("actualizar_interfaz_ronda. Data: ", data);
 
 		ocultarMesaBotones();
@@ -2416,12 +2426,12 @@ button:active {
 		document.getElementById('juegos-pareja1').textContent = data.juegos[0];
 		document.getElementById('juegos-pareja2').textContent = data.juegos[1];
 
-		if ((data.puntos[0] >= 40) || (data.puntos[1] >= 40)) {
+		if ((data.puntos[0] >= puntos_juego) || (data.puntos[1] >= puntos_juego)) {
 			// Actualizar el marcador de juegos:
 			data.puntos.forEach((puntos, equipo) => {
-				if (puntos >= 40) {
+				if (puntos >= puntos_juego) {
 
-					if (apuesta >= 40) { 
+					if (apuesta >= puntos_juego) { 
 						accion = "ÓRDAGO";
 					} else {
 						accion = "juego";
@@ -2446,8 +2456,8 @@ button:active {
 					document.getElementById('juegos-pareja2').textContent = data.juegos[1];
 
 					// Mensaje en consola para depuración
-					console.log(`¡La pareja ${equipo + 1} ha superado los 40 puntos! Juegos actualizados: ${data.juegos[equipo]}`);
-					if (data.juegos[equipo] === 2) {  // pongo uno para las pruebas
+					console.log(`¡La pareja ${equipo + 1} ha superado los ${puntos_juego} puntos! Juegos actualizados: ${data.juegos[equipo]}`);
+					if (data.juegos[equipo] === juegos_vaca) {  // pongo uno para las pruebas
 						mostrarPopup(mesa_id, mensajeCentral);
 					}
 				}

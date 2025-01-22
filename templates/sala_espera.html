@@ -20,6 +20,89 @@
     font-weight: bold;
 }
 
+/* Estilos para la ventana modal personalizada */
+.modal-configuracion {
+    display: none;
+    position: fixed;
+    z-index: 1000; /* Asegura que esté por encima de otros elementos */
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    font-family: Arial, sans-serif;
+}
+
+/* Contenedor del contenido del modal */
+.modal-configuracion-contenido {
+    background-color: #fff;
+    margin: 10% auto;
+    padding: 25px;
+    border-radius: 8px;
+    width: 40%;
+    max-width: 500px;
+    box-shadow: 0px 0px 20px rgba(0,0,0,0.3);
+}
+
+/* Estilo del título */
+.modal-configuracion h2 {
+    margin-top: 0;
+    color: #333;
+    font-size: 22px;
+    text-align: center;
+    border-bottom: 2px solid #4CAF50;
+    padding-bottom: 10px;
+}
+
+/* Estilo del botón de cerrar */
+.modal-configuracion .cerrar {
+    float: right;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #555;
+}
+
+.modal-configuracion .cerrar:hover {
+    color: #ff0000;
+}
+
+/* Estilo de etiquetas */
+.modal-configuracion label {
+    display: block;
+    margin: 15px 0 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+/* Estilo de los campos de selección e input */
+.modal-configuracion select, 
+.modal-configuracion input {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-sizing: border-box;
+}
+
+/* Estilo del botón de aceptar */
+.modal-configuracion button {
+    width: 100%;
+    padding: 12px;
+    margin-top: 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 18px;
+    cursor: pointer;
+}
+
+.modal-configuracion button:hover {
+    background-color: #45a049;
+}
+
 </style>		
 </head>
 <body>
@@ -88,7 +171,8 @@
         }
 		
         function crearMesaHTML(nombre, estado, jugadores) {
-            const nuevaMesa = document.createElement("div");
+		          
+			const nuevaMesa = document.createElement("div");
             nuevaMesa.className = "mesa";
 			nuevaMesa.id = "Mesa_" + mesaCount; // Asignar un ID único a la mesa
             nuevaMesa.setAttribute("data-mesa-id", nombre) //"Mesa_"+mesaCount); 			
@@ -113,6 +197,53 @@
             return nuevaMesa;
         }
  
+		// Cerrar la ventana modal
+		function cerrarModal() {
+			document.getElementById('modalConfigMesa').style.display = 'none';
+		}
+
+		// Enviar la configuración al servidor
+		function aceptarConfiguracion() {
+			const usuario = "{{ usuario }}";
+			const numJuegos = document.getElementById('numJuegos').value;
+			const puntosPorJuego = document.getElementById('puntosPorJuego').value;
+			const tiempoEspera = document.getElementById('tiempoEspera').value;
+			const admitirBots = document.getElementById('admitirBots').value === 'true';
+
+			// Crear objeto de configuración de la mesa
+			const configMesa = {
+				usuario: usuario,
+				num_juegos: parseInt(numJuegos),
+				puntos_por_juego: parseInt(puntosPorJuego),
+				tiempo_espera: parseInt(tiempoEspera),
+				admitir_bots: admitirBots
+			};
+
+			// Emitir evento al servidor con la configuración
+			socket.emit('create_table', configMesa);	
+			//socket.emit('configurar_mesa', configMesa);
+
+			console.log("Configuración enviada:", configMesa);
+
+			// Cerrar la ventana modal después de aceptar
+			cerrarModal();
+		}
+
+		// Cerrar el modal si se hace clic fuera de él
+		window.onclick = function(event) {
+			const modal = document.getElementById('modalConfigMesa');
+			if (event.target === modal) {
+				cerrarModal();
+			}
+		}
+		 
+ 		function crearMesa() {
+			document.getElementById('modalConfigMesa').style.display = 'block';
+		}
+ 
+ 
+ 
+ 
 		socket.on('crear_mesaPY', (data) => {
 			// Recuperar los parámetros desde los datos recibidos
 			const mesaId = data.table_name; // Nombre de la mesa creada
@@ -135,12 +266,7 @@
             chatBox.appendChild(messageElement);
             chatBox.scrollTop = chatBox.scrollHeight;
         });
-
-		function crearMesa() {
-			const usuario = "{{ usuario }}" 
-		    socket.emit('create_table', { usuario: usuario });		
-		}
-		
+	
         function toggleAsiento(elemento, tableId, asientoIndex) {
 			//const avatarUrl = "../static/img/avatares/avatar17.png";
 			const avatarUrl = "../static/{{ avatar }}"; 
@@ -241,6 +367,7 @@
 					//mesaElement = document.querySelector(`#${mesaId}`);
 				}
 				// Actualizar estado de la mesa en el título <h3>
+				
 				const estadoElement = mesaElement.querySelector('h3');
 				if (estadoElement) {
 					const textoActual = estadoElement.textContent;
@@ -380,5 +507,41 @@
 		});
 	
 	</script>
+
+<!-- Ventana Modal de configuración de la mesa -->
+<div id="modalConfigMesa" class="modal-configuracion">
+    <div class="modal-configuracion-contenido">
+        <span class="cerrar" onclick="cerrarModal()">&times;</span>
+        <h2>Configuración de la Partida</h2>
+
+        <label for="numJuegos">Número de juegos:</label>
+        <select id="numJuegos">
+            <option value="1">1</option>
+            <option value="2" selected>2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+        </select>
+
+        <label for="puntosPorJuego">Puntos por juego:</label>
+        <select id="puntosPorJuego">
+            <option value="30">30</option>
+            <option value="40" selected>40</option>
+        </select>
+
+        <label for="tiempoEspera">Tiempo de espera por jugador (segundos):</label>
+        <input type="number" id="tiempoEspera" min="10" max="300" value="60">
+
+        <label for="admitirBots">¿Permitir bots?</label>
+        <select id="admitirBots">
+            <option value="true">Sí</option>
+            <option value="false" selected>No</option>
+        </select>
+
+        <button onclick="aceptarConfiguracion()">Aceptar</button>
+    </div>
+</div>
+
+	
 </body>
 </html>
