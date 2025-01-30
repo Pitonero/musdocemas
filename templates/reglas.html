@@ -62,20 +62,44 @@
             color: white;
         }
 
+}
+
+.intro .cta-button {
+    background-color: #f4a261;
+    color: #fff;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.3s ease;
+}
+
+.intro .cta-button:hover {
+    background-color: #e76f51;
+}
+
+
         .back-button {
+			display: block;
+			margin: 0 auto;			
             display: block;
             width: fit-content;
-            margin: 0 auto 20px auto;
-            padding: 10px 20px;
-            background-color: #2563eb;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            text-align: center;
+            padding: 12px;
+            font-size: 18px;
+			color: #fff;
+			background-color: #f4a261;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 10px;
+            text-align: center;			
+            transition: background-color 0.3s;
         }
 
         .back-button:hover {
-            background-color: #1d4ed8;
+            background-color: #a0522d;
         }
     </style>
 </head>
@@ -150,11 +174,12 @@
         </section>
         
         <!-- Botón de regreso a la página de inicio -->
-        <a href="index.html" class="back-button">Volver a la Home</a>
+		
+        <a onclick="window.location.href='/'" class="back-button">Volver</a>
     </main>
 
     <footer>
-        <p>&copy; 2023 Juega al MUS - Todos los derechos reservados</p>
+        <p>&copy; 2025 Juega al MUS - Todos los derechos reservados</p>
     </footer>
 </body>
 </html>
