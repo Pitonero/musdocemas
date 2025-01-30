@@ -18,15 +18,15 @@ class CUsuarios:
             print(f"Error al mostrar datos: {error}")
 
     @staticmethod
-    def insertarUsuario(nombre_usuario, alias, email, password_hash, avatar_url, fecha_registro, verificado, codigo_activacion):
+    def insertarUsuario(nombre_usuario, alias, email, password_hash, avatar_url, activo, clave_activacion, fecha_registro, codigo_activacion, verificado):
         try:
             cone = CConexion.ConexionBaseDeDatos()
             cursor = cone.cursor()
             sql = """
-                INSERT INTO Usuarios (nombre_usuario, alias, email, password_hash, avatar_url, fecha_registro, verificado, codigo_activacion)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
+                INSERT INTO Usuarios (nombre_usuario, alias, email, password_hash, avatar_url, activo, clave_activacion, fecha_registro, codigo_activacion, verificado)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
             """
-            valores = (nombre_usuario, alias, email, password_hash, avatar_url, fecha_registro, verificado, codigo_activacion)
+            valores = (nombre_usuario, alias, email, password_hash, avatar_url, activo, clave_activacion, fecha_registro, codigo_activacion, verificado)
             cursor.execute(sql, valores)
             cone.commit()
             print(f"DEBUG: ALTA USUARIO: {cursor.rowcount} registro insertado")

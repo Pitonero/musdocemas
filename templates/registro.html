@@ -153,6 +153,13 @@
         emailError.style.color = 'red';
         emailInput.parentNode.appendChild(emailError);
 
+		const boton = document.getElementById('mostrar-verificacion');	
+		if ({{ mostrar_verificacion }}) {
+			boton.textContent = "Teclee código activación";	
+		} else {
+			boton.textContent = "Crear Cuenta";
+		}
+		
         // Validar alias
         aliasInput.addEventListener('input', function () {
             const alias = aliasInput.value.trim();
@@ -170,6 +177,7 @@
             const email = emailInput.value.trim();
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // Regex básico para emails
             if (!emailRegex.test(email)) {
+				mostrar_verificacion = false;
                 emailError.textContent = "Introduce un correo electrónico válido.";
             } else {
                 emailError.textContent = ""; // Sin errores
@@ -190,6 +198,7 @@
 
             // Validar email
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+				mostrar_verificacion = false;
                 emailError.textContent = "Introduce un correo electrónico válido.";
                 isValid = false;
             }
@@ -203,7 +212,7 @@
 
     function cambiarTexto() {
         const boton = document.getElementById('mostrar-verificacion');
-        boton.textContent = "Teclee código de activación";
+        boton.textContent = "Crear Cuenta";
     }
 </script>
 </body>

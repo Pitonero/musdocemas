@@ -118,7 +118,10 @@ def logout():
         #jugadores = mesa["jugadores"]
         # Habría que eliminarlo de jugadores o sustituirlo por bot
         #socketio.emit('mensaje_mesa', {'msg': f"El jugador {username}, se ha desconectado de la mesa de juego.", 'username': 'Docemas' }, to=mesa_id)
-    
+        mesa = tables[mesa_id]
+        indice_usuario = mesa['jugadores'].index(username)        
+        mesa['bot_activo'][indice_usuario] = True
+
     if username in logged_players:
         logged_players.remove(username)
         for table, jugadores in tables.items():
@@ -129,7 +132,7 @@ def logout():
      #   socketio.emit('update_players', logged_players, broadcast=True)
 
     # Elimina todos los datos de la sesión
-    print(f"Va alimpiar la sesión")
+    print(f"Va a limpiar la sesión")
     session.clear()
 
     # Redirige al usuario a la página inico o de login
@@ -329,22 +332,29 @@ def storage():
     alias =  request.form['alias']   
     password =  request.form['password']   
     correo =  request.form['email']  
+    verificacion = request.form.get('verificacion', '')  # Si no existe, devuelve ''
     avatar_url =  'img/avatar.png'   
     verificado = False
     
     if nombrep=='' or correo == '' or alias=='' or password=='':
         print("DEBUG. Faltan por rellenar campos ")         
         return render_template('registro.html', nombrep=nombrep,usuario=alias,password=password,correo=correo,mensaje='Recuerda rellenar todos los campos.')
-     
+
+    if len(alias) < 5 or len(alias) > 10:
+        print("DEBUG. Nombre menor de 5 o mayor de 10.")         
+        return render_template('registro.html', nombrep=nombrep,usuario=alias,password=password,correo=correo,mensaje='La longitud del usuario debe estar entre 5 y 10.')
+
     if nombrep=='Bot1' or nombrep=='Bot2' or nombrep=='Bot3':
         print("DEBUG. Nombres reservados para los Bots.")         
         return render_template('registro.html', nombrep=nombrep,usuario=alias,password=password,correo=correo,mensaje='Ya existe este nombre de usuario.')
 
     # Verificamos que el email sea único
     datosusuario, leidos=CUsuarios.leerEmail(correo)
-    if leidos > 0 and (datosusuario [0] [7] == True):
-        print("DEBUG. EL EMAIL ", correo, " ya lo tiene otro usuario asignado: ", datosusuario [0] [2])         
-        return render_template('registro.html', nombrep=nombrep,usuario=alias,password=password,correo=correo,mensaje='El email ya lo tiene otro usuario asignado.')
+    print("DEBUG. LEEMOS USUARIO EMAIL: ", correo, " Datosusuario: ", datosusuario) 
+
+    if leidos > 0 and (datosusuario [0] [10] == True):
+        print("DEBUG. EL EMAIL ", correo, " ya pertenece a otro usuario: ", datosusuario [0] [2])         
+        return render_template('registro.html', nombrep=nombrep,usuario=alias,password=password,correo=correo,mensaje='El email ya pertence a otro usuario.')
  
     # Generar el hash de la contraseña
     password_hash = hashlib.sha256(password.encode()).hexdigest()
@@ -353,25 +363,23 @@ def storage():
     #tiempo=now.strftime("%Y%H%M%S")
 
     datosusuario, leidos=CUsuarios.leerUnUsuario(alias)
-    print("DEBUG. LEEMOS USUARIO: Datosusuario: ", datosusuario) 
+    print("DEBUG. LEEMOS USUARIO: :", leidos, " Datosusuario: ", datosusuario) 
         
-    if leidos > 0 and (datosusuario [0] [7] == True):
+    if leidos > 0 and (datosusuario [0] [10] == True): 
         print("DEBUG. EL USUARIO ", alias, " existe y ya está verificado: ", datosusuario [0] [6])         
         return render_template('registro.html', nombrep=nombrep,usuario=alias,password=password,correo=correo,mensaje='El nombre del usuario ya lo tiene otro usuario asignado.')
     
     if leidos == 0:
         # Generar un número aleatorio de 6 dígitos
         codigo_activacion = str(random.randint(100000, 999999))   
-        print("DEBUG. ALTA USUARIO: codigo activacion", codigo_activacion)    
-        CUsuarios.insertarUsuario(nombrep,alias,correo,password_hash,avatar_url,now,verificado,codigo_activacion)
+        CUsuarios.insertarUsuario(nombrep,alias,correo,password_hash,avatar_url,True, '1234',now,codigo_activacion,verificado)
         print("DEBUG. ALTA USUARIO: codigo activacion", codigo_activacion, " VERIFICADO: ", verificado)    
         Ccorreo.enviar_email(correo, codigo_activacion)
         return render_template('registro.html', nombrep=nombrep,usuario=alias,password=password,correo=correo,mostrar_verificacion = True,mensaje='Se ha enviado un correo con el código de activación.')
 
-    if leidos > 0 and (datosusuario [0] [7] == False):
-        print("DEBUG. ALTA USUARIO: codigo verificacion BD: ", datosusuario [0] [8]) 
-        verificacion = request.form['verificacion'] 
-        if datosusuario [0] [8] != verificacion:            
+    if leidos > 0 and (datosusuario [0] [10] == False):
+        print("DEBUG. ALTA USUARIO: codigo verificacion BD: ", datosusuario [0] [9], " verificacion del usuario: ", verificacion) 
+        if datosusuario [0] [9] != verificacion:            
             return render_template('registro.html', nombrep=nombrep,usuario=alias,password=password,correo=correo,mensaje='Código de activación erróneo.')
         else:
             CUsuarios.modificarActivacion(alias)
@@ -379,14 +387,12 @@ def storage():
             session['nombre'] = nombrep 
             session['avatar'] = avatar_url
             return render_template('entrarajugar.html',usuario=alias,nombre=nombrep,avatar=avatar_url)
-    '''
     else:  
-        CUsuarios.modificarActivacion(alias)
         session['usuario'] = alias
         session['nombre'] = nombrep 
         session['avatar'] = avatar_url
         return render_template('entrarajugar.html',usuario=alias,nombre=nombrep,avatar=avatar_url)
-    '''
+
 
 @app.route('/acceso', methods=['POST'])
 def acceso():
@@ -414,12 +420,12 @@ def acceso():
         correo = datosusuario [0] [3]
         passwordbd = datosusuario [0] [4]
         avatar = datosusuario [0] [5]
-        acceso = datosusuario [0] [7]
+        validacion = datosusuario [0] [10]
         
         print("Los datos recuperados del usuario son:", datosusuario)
         
-        if acceso == 0:
-            print("Entra por acceso = 0:", acceso)
+        if validacion == False:
+            print("Entra por acceso = 0:", validacion)
             mensaje_error = "Usuario no validado con código de activación."
             return render_template('identificacion.html', usuario=usuario,password=password,mensaje_error=mensaje_error)
 
@@ -446,8 +452,9 @@ def acceso():
             for id_mesa, mesa in tables.items():
                 if usuariobd in mesa['jugadores']:
                     print(f"DEBUG ACCESO. Jugador {usuariobd} estaba jugando en la mesa: {id_mesa}")
-                   #sid = request.sid
-                   # join_room(str(id_mesa))
+                    mesa = tables[id_mesa]
+                    indice_usuario = mesa['jugadores'].index(usuariobd)        
+                    mesa['bot_activo'][indice_usuario] = False
                     return render_template('mesa_juego.html', mesa=tables[id_mesa], usuario=usuariobd, mesa_id=id_mesa)
 
     return render_template('entrarajugar.html',usuario=usuario,nombre=nombre,avatar=avatar)
@@ -488,7 +495,10 @@ def handle_disconnect():
         # Habría que eliminarlo de jugadores o sustituirlo por bot
        #jugadores = mesa["jugadores"]
         print("DEBUG DESCONECTAR JUGADOR. ", username)
-        socketio.emit('mensaje_mesa', {'msg': f"{username}, tiene problemas con su conexión.", 'username': 'Docemas' }, to=mesa_id)
+        socketio.emit('mensaje_mesa', {'msg': f"{username}, tiene problemas con su conexión.", 'username': 'Docemas' }, to=mesa_id)        
+        mesa = tables[mesa_id]
+        indice_usuario = mesa['jugadores'].index(username)        
+        mesa['bot_activo'][indice_usuario] = True
 
     print(f"Jugador desconectado: {username}")
     if username in logged_players:
@@ -541,14 +551,16 @@ def mensaje_chat_mesa(data):
 def join_mesa(data):
     mesa_id = data['mesa_id']
     username = data['username']
+    mesa = tables[mesa_id]
     # Verificar si el usuario está en la sala
     sid = request.sid  # ID de sesión del cliente actual 
     if mesa_id in rooms(sid):  
         print(f"{username} ya está en la room {mesa_id}")
     else:
         join_room(str(mesa_id))  # Une al cliente a la sala de la mesa  
+        turno = mesa["jugadores"].index(username)
+        mesa['bot_activo'][turno] = False
         print(f"{username} se unió a la room {mesa_id}")
-   
 
 @socketio.on('entrar_asiento')
 def handle_entrar_asiento(data):
@@ -574,6 +586,7 @@ def handle_entrar_asiento(data):
     if mesa["jugadores"][asiento] is None:
         mesa["jugadores"][asiento] = username
         mesa["avatares"][asiento] = avatar
+        mesa['bot_activo'][asiento] = False
         tables[mesa_id] = mesa  # Guardar cambios
     print(f"{username} entró en el asiento {asiento} de {mesa_id} con el avatar {avatar}")
     # Agregar el username a la sala
@@ -650,11 +663,12 @@ def handle_create_table(data):
     tables[table_id] = {
         "nombre": f"Mesa_{table_counter}",
         "owner": username,
+        "estado": "En espera",
         "juegos_vaca": juegos_vaca,
         "puntos_juego": puntos_juego, 
         "espera": tiempo_espera,
         "bots": admitir_bots,
-        "estado": "En espera",
+        "bot_activo": [False, False, False, False], # Asientos con bot
         "jugadores": [None, None, None, None],  # Asientos vacíos
         "avatares": [None, None, None, None],  # Avatares vacíos
         "lances": ["Grande", "Chica", "Pares", "Juego", "Punto"],
@@ -695,7 +709,6 @@ def handle_create_table(data):
                 },
         "pares_confirmados": {}
     }
-
 
     print('CREAR MESA PY. Va a hacer el emit desde create_table: ',  table_id, 'nro_table', table_counter )  
     emit('crear_mesaPY', { 'table_name': table_id, 'nro_table': table_counter }, broadcast=True)
@@ -822,6 +835,7 @@ def handle_repartir_cartas(data):
         mesa['descartes'] = descartes
         mesa['manos'] = manos
         mesa['estado_partida'] = "Mus"
+
         tables[mesa_id] = mesa  # Guardar cambios en la mesa
         print("cartas repartidas manos:", manos)
         
@@ -829,6 +843,8 @@ def handle_repartir_cartas(data):
  
          # Emitir las cartas repartidas a los jugadores
         emit('cartas_repartidas', {'mesa_id': mesa_id, 'manos': manos, 'mano': mano},  to=mesa_id)
+
+        verificarBot(mesa_id,mesa['jugadores'][mesa['turno_actual']], mesa['estado_partida'])
 
     except KeyError as e:
         emit('error', {'message': str(e)}, room=request.sid)
@@ -1136,21 +1152,23 @@ def tratar_mus(data):
         'musContador': mesa['musContador'],
         'indiceActual': mesa['turno_actual'],        
         'jugadorActual': jugador_turno
+       # 'bot_activo': mesa['bot_activo'][mesa['turno_actual']] 
     }, to=mesa_id)
 
     if (musContador == 4):
         mesa["musContador"] = 0
-        emit('mensaje_mesa', {'msg': f"{jugadorAntes} se da MUS. {jugador_turno} es ahora el mano y le toca descartarse.", 'username': 'Docemas'}, to=mesa_id)
+        emit('mensaje_mesa', {'msg': f"{jugadorAntes} se da MUS. {jugador_turno} es ahora el mano y le toca descartarse.", 'username': 'Docemas'}, to=mesa_id)       
     else:
         emit('mensaje_mesa', {'msg': f"{jugadorAntes} se da MUS. Habla {jugador_turno}", 'username': 'Docemas'}, to=mesa_id)
-
     tables[mesa_id] = mesa  # Guardar cambios
-
+    verificarBot(mesa_id, jugador_turno, mesa['estado_partida'])
 
 @socketio.on('tratar_corto')
 def tratar_corto(data):
+    
     mesa_id = data['mesa_id']
     mesa = tables.get(mesa_id)
+    jugadorCorto = data['jugadorCorto']
     jugadores = mesa['jugadores']
     mesa['estado_partida'] = "Cortar"
     # Si es la primera ronda el mano es el que corta, sino el que toque
@@ -1187,8 +1205,11 @@ def tratar_corto(data):
     emit('comenzar_ronda', {'mesa_id': mesa_id,
                             'turno_actual': indice_mano, 
                             'jugador_turno': jugador_turno,
-                            'lance_actual': mesa['lance_actual']}, 
+                            'lance_actual': mesa['lance_actual'], 
+                            'jugadorCorto': jugadorCorto},
                              to=mesa_id)
+    
+    verificarBot(mesa_id, jugador_turno, mesa['estado_partida'])
 
 ##########################################################################################################
 #####  CÓDIGO PARA CONTROLAR LOS LANCES DE CADA TURNO ####################################################
@@ -1570,7 +1591,7 @@ def avanzar_turno(mesa):
             break
 
     print(f"[DEBUG] Avanzar_turno. Siguiente turno: {mesa['jugadores'][mesa['turno_actual']]}")
-
+    verificarBot(mesa["nombre"], mesa['jugadores'][mesa['turno_actual']], mesa['estado_partida'])
 
 
 def reiniciar_hablado(mesa):
@@ -1673,7 +1694,6 @@ def pasar_a_siguiente_lance(mesa):
             if (total_pares == 4):
                 emit('mensaje_mesa', {'msg': f"Comienza el lance de pares. Es el turno de {jugadorturno}", 'username': mesa['lance_actual']}, to=mesa_id)
 
-
         if mesa["lance_actual"] == "Juego":
             print("[DEBUG] Pasar_a_siguiente_lance: Estado actualizado 11 desde ", mesa['lance_actual'])
             emit('estado_actualizado', mesa, to=mesa_id)     
@@ -1734,6 +1754,8 @@ def pasar_a_siguiente_lance(mesa):
                     print("[DEBUG] Se hace el emit de Punto. Es el turno de :", jugadorturno)        
             print("[DEBUG] Pasar_a_siguiente_lance: Estado actualizado 12 desde ", mesa['lance_actual'])
             emit('estado_actualizado', mesa, to=mesa_id)
+
+        verificarBot(mesa_id,mesa['jugadores'][mesa['turno_actual']], mesa['estado_partida'])
     else:
         finalizar_ronda(mesa)  # Si se completaron todos los lances, finalizar la ronda
 
@@ -2825,6 +2847,63 @@ def procesar_lance_juego(mesa):
 
 import random
 
+def verificarBot(mesa_id, jugador_turno, estado_partida):
+    mesa = tables[mesa_id]  
+    turno = mesa["jugadores"].index(jugador_turno)
+    print("BOTs activos: ", mesa['bot_activo'], " Turno", turno, " jugador: ", jugador_turno, " estado_partida: ", estado_partida)
+
+    if mesa['bot_activo'][turno] == True:
+        hora_actual = datetime.now().time()
+        print("BOTs La hora actual es:                       ", hora_actual)
+        socketio.sleep(1)        
+        if estado_partida == "Mus":
+            print("BOT Entra por Mus")  
+            mus_corto_bot(mesa_id, jugador_turno)      
+        if estado_partida == "Cortar":
+            print("BOT Entra por Cortar")  
+            jugar_partida(mesa_id, jugador_turno)      
+        if estado_partida == "Descartar":
+            print("BOT Entra por Descartar")
+            descarte_bot(mesa_id, jugador_turno)
+        if estado_partida == "Repartir":
+            print("BOT Entra por Repartir")
+        if estado_partida == "Jugar":
+            print("BOT Entra por Jugar")
+            jugar_partida(mesa_id, jugador_turno)
+        #time.sleep(5)
+        socketio.sleep(3)
+        hora_actual = datetime.now().time()
+        print("BOTs La hora actual es después de 4 segundos: ", hora_actual) 
+
+# Actúa como si se hubiera pulsado corto o mus
+def mus_corto_bot(mesa_id, jugador_turno):
+    mesa = tables[mesa_id]  
+    respuestaMC = decision_mus_o_corto(mesa)
+    print("BOT. respuestaMC: ", respuestaMC)
+    if respuestaMC == 'Mus':
+        tratar_mus(mesa_id)
+    else:    
+        data = {'mesa_id': mesa_id, 'jugadorTurno': mesa['jugadores'][mesa['turno_actual']], 'indiceTurno': mesa['turno_actual'], 'jugadorCorto': jugador_turno}
+        tratar_corto(data)
+
+# Actúa como si se descartase
+def descarte_bot(mesa_id, jugador):
+    mesa = tables[mesa_id]  
+    mano_jugador = mesa['manos'][jugador]
+    quedarse, descartar, num_descartes = analizar_mano(mano_jugador)
+    print("BOT. analizar_mano: ", mano_jugador, " quedarse: ", quedarse, " descartar: ", descartar, "nro descartes: ", num_descartes)
+    data = {'mesa_id': mesa_id, 'jugador': jugador, 'num_cartas': num_descartes, 'cartasRestantes': descartar }
+    handle_pedir_cartas(data)
+
+# Actúa como si se hubiera pulsado Envido, Paso, Órdago o Veo
+def jugar_partida(mesa_id, jugador):
+    mesa = tables[mesa_id]  
+    decision, apuesta = respuesta_bot(mesa)
+    print("BOT. Decisión: ", decision, " apuesta: ", apuesta)
+    data = {'mesa_id': mesa_id, 'jugador': jugador, 'accion': decision, 'envido': apuesta }
+    manejar_accion(data)
+
+# Actúa como si se hubiera pulsado un botón de acción
 def decision_mus_o_corto(mesa):
     def evaluar_mano():
         mano_bot = mesa['manos'][mesa['jugadores'][mesa['turno_actual']]]
@@ -2840,6 +2919,45 @@ def decision_mus_o_corto(mesa):
         return 'Mus'
     else:
         return 'Corto'
+
+def analizar_mano(mano):
+    # Definir valores de cartas para grande y pares (R, 12 y 3 valen 12)
+    valores_grande_pares = {'3': 12, 'R': 12, '12': 12}
+    valores_juego_punto = {
+        'A': 1, '2': 1, '3': 12, '4': 4, '5': 5, '6': 6, 
+        '7': 7, '8': 8, '9': 9, '10': 10, '11': 10, '12': 12, 'R': 12
+    }
+
+    # Extraer solo los valores de la mano, ignorando los palos
+    valores_mano = [carta[:-1] for carta in mano]
+    
+    # Contar ocurrencias de valores en la mano
+    conteo = {valor: valores_mano.count(valor) for valor in set(valores_mano)}
+    
+    # Estrategia 1: Buscar la combinación de Reyes (R) y Treses (3)
+    quedarse = []
+    for valor in ['R', '3']:
+        if valor in conteo and conteo[valor] > 0:
+            quedarse.extend([carta for carta in mano if carta.startswith(valor)])
+    
+    # Estrategia 2: Buscar pareja de Ases (A) o Doses (2)
+    if len(quedarse) == 0 and ('A' in conteo and conteo['A'] >= 2):
+        quedarse = [carta for carta in mano if carta.startswith('A')]
+    elif len(quedarse) == 0 and ('2' in conteo and conteo['2'] >= 2):
+        quedarse = [carta for carta in mano if carta.startswith('2')]
+
+    # Si no hay buenas combinaciones, quedarse con las cartas más altas según valores de grande
+    if len(quedarse) == 0:
+        quedarse.append(max(mano, key=lambda carta: valores_grande_pares.get(carta[:-1], valores_juego_punto.get(carta[:-1], 0))))
+
+    # Determinar las cartas a descartar
+    descartes = [carta for carta in mano if carta not in quedarse]
+    
+    return {
+        'quedarse': quedarse,
+        'descartar': descartes,
+        'num_descartes': len(descartes)
+    }
 
 def respuesta_bot(mesa):
     estadobot = None
@@ -2864,47 +2982,48 @@ def respuesta_bot(mesa):
         acciones = mesa['acciones']
         if acciones[mesa['lances'].index(lance_actual)] == 'Paso':
             if lance_actual == 'Grande' and evaluar_mano().count(12) >= 2:
-                return 'Envido'
+                return 'Envido', 2
             elif lance_actual == 'Chica' and evaluar_mano().count(1) >= 2:
-                return 'Envido'
+                return 'Envido', 2
             elif lance_actual == 'Pares' and len(set(evaluar_mano())) < len(mesa['manos'][mesa['jugadores'][mesa['turno_actual']]]):
-                return 'Envido'
+                return 'Envido', 2
             elif lance_actual == 'Juego' and sum(evaluar_mano()) == 31:
-                return 'Subo 5' if mesa['turno_actual'] == mesa['mano'] else 'Envido'
+                return ('Subo 5', 5) if mesa['turno_actual'] == mesa['mano'] else ('Envido', 2)
             elif lance_actual == 'Punto' and sum(evaluar_mano()) in [29, 30]:
-                return 'Subo 5' if mesa['turno_actual'] == mesa['mano'] else 'Envido'
-        return 'Paso'
+                return ('Subo 5', 5) if mesa['turno_actual'] == mesa['mano'] else ('Envido', 2)
+        return 'Paso', 0
 
     def decision_con_apuesta():
         if mesa['accion'] == 'Órdago' or mesa['apuesta_actual'] > 12:
             if mesa['lance_actual'] == 'Grande' and (evaluar_mano().count(12) >= 3 or (evaluar_mano().count(12) >= 2 and sum(mesa['puntos']) > 30)):
-                return 'Veo'
+                return 'Veo', 0
             if mesa['lance_actual'] == 'Chica' and (evaluar_mano().count(1) >= 3 or (evaluar_mano().count(1) >= 2 and sum(mesa['puntos']) > 30)):
-                return 'Veo'
-        return 'Paso'
+                return 'Veo', 0
+        return 'Paso', 0
 
     def decision_farol():
-        opciones = ['Paso', 'Envido', f'Subo {random.choice([2, 5, 10])}', 'Órdago']
+        opciones = [('Paso', 0), ('Envido', random.choice([2, 5, 10])), (f'Subo {random.choice([2, 5, 10])}', random.choice([2, 5, 10])), ('Órdago', 40)]
         return random.choice(opciones)
 
     modo_juego()
-    decision = decision_estandar() if mesa['apuesta_actual'] == 0 else decision_con_apuesta()
+    decision, apuesta = decision_estandar() if mesa['apuesta_actual'] == 0 else decision_con_apuesta()
     
     if estadobot == 'agresivo':
         if 'Subo' in decision:
-            nueva_apuesta = int(decision.split()[1]) + random.choice([2, 5])
+            nueva_apuesta = apuesta + random.choice([2, 5])
             decision = f'Subo {nueva_apuesta}'
+            apuesta = nueva_apuesta
         elif decision == 'Paso':
             decision = 'Envido'
+            apuesta = 2
     
     if random.random() < 0.2:
-        return decision_farol()
+        decision, apuesta = decision_farol()
     
-    return decision
+    return decision, apuesta
+
 
 ##############################################################################################
-
-
 
 def debug_manos(mesa):
     if not isinstance(mesa["manos"], dict):

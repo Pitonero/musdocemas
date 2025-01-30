@@ -1123,9 +1123,9 @@ button:active {
 			const jugadorTurno = manoJugador;
 			let partida = "";
 			if (mesa.juegos_vaca === 1) {
-				partida = "Partida al mejor de 1 juego de " + mesa.puntos_juego;
+				partida = "Partida a 1 juego de " + mesa.puntos_juego;
 			} else {
-				partida = "Partida al mejor de " + mesa.juegos_vaca + " juegos de " + mesa.puntos_juego;
+				partida = "Partida a " + mesa.juegos_vaca + " juegos de " + mesa.puntos_juego;
 			}
 			document.getElementById('partida').innerHTML = '<span style="font-size: 14px;">' + partida + '</span>';
 			
@@ -1528,7 +1528,8 @@ button:active {
 			const mesaId = "{{ mesa.nombre }}";
 			//alert("Se corta el MUS");
 			jugadorTurno = jugadores[indiceTurno];
-			socket.emit('tratar_corto', { mesa_id: mesaId, jugadorTurno: jugadorTurno, indiceTurno: indiceTurno });
+			const jugadorCorto = window.username || "desconocido";
+			socket.emit('tratar_corto', { mesa_id: mesaId, jugadorTurno: jugadorTurno, indiceTurno: indiceTurno, jugadorCorto: jugadorCorto });
 		  };
 
 		// Acción al pulsar "Mus"
@@ -1968,9 +1969,9 @@ button:active {
 		turnoNotificacion.classList.remove("oculto");
 
       // Ocultar la notificación después de 3 segundos
-      setTimeout(() => {
-        turnoNotificacion.classList.add("oculto");
-      }, 3000);
+    //  setTimeout(() => {
+    //    turnoNotificacion.classList.add("oculto");
+    //  }, 3000);
     }
 
 	// Escuchar mensajeserrores del servidor
@@ -2066,13 +2067,15 @@ button:active {
     socket.on('comenzar_ronda', (data) => {
 		indiceMano = data.turno_actual;
 		jugadorTurno = data.jugador_turno;	
+		jugadorCorto = data.jugadorCorto;
 		mostrarTurno(jugadorTurno);
 		console.log('COMENZAR RONDA: jugadorTurno desde servidor:', jugadorTurno, " jugador cliente: ", "{{ usuario }}");
 		ocultarBotones();
 		const manoJugadorIdx = reorganizedJugadores.findIndex(jugador => jugador === jugadorTurno);	
 		console.log("Comenzar ronda. Jugador mano es: ", jugadorTurno, " indice reorganiced es: ", manoJugadorIdx);
 		resaltarManoDescarte(manoJugadorIdx);
-		mostrarBocadillo2(manoJugadorIdx, "Corto");	
+		const manoJugadorIdx2 = reorganizedJugadores.findIndex(jugador => jugador === jugadorCorto);	
+		mostrarBocadillo2(manoJugadorIdx2, "Corto");	
 		const textoLance = document.getElementById('texto-lance');
 		textoLance.textContent = "Grande";
 					 
@@ -2239,7 +2242,9 @@ button:active {
 		// Actualizar lanceturno
 		const textoLance = document.getElementById('texto-lance');
 		textoLance.textContent = lanceActual;
-
+		
+		mostrarTurno(turnoJugador);
+		
 		// Mostrar/ocultar botones según el turno
 		if (turnoJugador === jugadorActual) {
 			mostrarMesaBotones(apuestaLance);
