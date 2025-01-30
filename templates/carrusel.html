@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carrusel de Frases de Mus</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            text-align: center;
+        }
+
+        .carousel-container {
+            width: 100%;
+            overflow: hidden;
+            background-color: #374151;
+            color: white;
+            padding: 10px 0;
+            position: relative;
+            height: 40px;
+        }
+
+        .carousel {
+            display: flex;
+            white-space: nowrap;
+            animation: moveRight 15s linear infinite;
+        }
+
+        .phrase {
+            min-width: 100%;
+            text-align: center;
+            font-size: 14px; /* Tamaño más pequeño */
+            font-weight: normal;
+            padding: 5px;
+        }
+
+        @keyframes moveRight {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="carousel-container">
+        <div class="carousel" id="phraseCarousel">
+            <div class="phrase">"Envido con mucha fuerza, pero solo dos."</div>
+            <div class="phrase">"El Mus no es de cartas, es de miradas."</div>
+            <div class="phrase">"Si envidé es porque tengo, si paso es porque quiero."</div>
+            <div class="phrase">"El Mus se juega con la boca, no con las cartas."</div>
+            <div class="phrase">"Ganar al Mus es fácil, lo difícil es no perder con estilo."</div>
+            <div class="phrase">"Si tienes un compañero bueno, no necesitas cartas."</div>
+            <div class="phrase">"Órdago… con mucho miedo y poca esperanza."</div>
+        </div>
+    </div>
+
+</body>
+</html>

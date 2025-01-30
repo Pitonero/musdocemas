@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carrusel de Banners - Musdocemas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+
+        .carousel-container {
+            width: 80%;
+            max-width: 900px;
+            margin: 20px auto;
+            overflow: hidden;
+            position: relative;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .carousel {
+            display: flex;
+            transition: transform 0.5s ease-in-out;
+        }
+
+        .carousel img {
+            width: 100%;
+            border-radius: 10px;
+        }
+
+        /* Botones de navegación */
+        .prev, .next {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            font-size: 18px;
+            border-radius: 50%;
+        }
+
+        .prev { left: 10px; }
+        .next { right: 10px; }
+
+        .prev:hover, .next:hover {
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+
+        /* Indicadores (puntos debajo del carrusel) */
+        .dots {
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            margin: 5px;
+            background-color: gray;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .dot.active {
+            background-color: black;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="carousel-container">
+        <div class="carousel" id="carousel">
+            <img src="../static/img/banner/banner2.webp" alt="Torneo Mensual">
+            <img src="../static/img/banner/banner3.webp" alt="Nuevas Reglas">
+            <img src="../static/img/banner/banner1.webp" alt="Top Jugadores">
+        </div>
+
+        <!-- Botones de navegación -->
+        <button class="prev" onclick="moveSlide(-1)">&#10094;</button>
+        <button class="next" onclick="moveSlide(1)">&#10095;</button>
+
+        <!-- Indicadores de posición -->
+        <div class="dots" id="dotsContainer"></div>
+    </div>
+
+    <script>
+        let slideIndex = 0;
+        const slides = document.querySelectorAll(".carousel img");
+        const dotsContainer = document.getElementById("dotsContainer");
+
+        // Crear indicadores dinámicamente
+        slides.forEach((_, index) => {
+            const dot = document.createElement("span");
+            dot.classList.add("dot");
+            dot.addEventListener("click", () => setSlide(index));
+            dotsContainer.appendChild(dot);
+        });
+
+        const dots = document.querySelectorAll(".dot");
+
+        function updateCarousel() {
+            const carousel = document.getElementById("carousel");
+            carousel.style.transform = `translateX(${-slideIndex * 100}%)`;
+            
+            dots.forEach(dot => dot.classList.remove("active"));
+            dots[slideIndex].classList.add("active");
+        }
+
+        function moveSlide(step) {
+            slideIndex = (slideIndex + step + slides.length) % slides.length;
+            updateCarousel();
+        }
+
+        function setSlide(index) {
+            slideIndex = index;
+            updateCarousel();
+        }
+
+        function autoSlide() {
+            moveSlide(1);
+        }
+
+        // Iniciar carrusel automático cada 4 segundos
+        setInterval(autoSlide, 4000);
+
+        // Iniciar el carrusel con el primer indicador activo
+        updateCarousel();
+    </script>
+
+</body>
+</html>

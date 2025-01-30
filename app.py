@@ -74,6 +74,10 @@ def terminosservicio():
 def tutorial():
     return render_template('tutorial.html')
 
+@app.route('/cultura')
+def cultura():
+    return render_template('cultura.html')
+
 @app.route('/ranking')
 def ranking():
     return render_template('estadisticas.html')
@@ -2435,12 +2439,22 @@ def determinar_ganador_pares(mesa):
     mano_index = mesa["mano"]
     jugadores_ordenados = jugadores[mano_index:] + jugadores[:mano_index]
 
+    '''
     ganador = max(
         jugadores,
         key=lambda j: (
             clasificacion_pares[j]["puntos"],
             clasificacion_pares[j]["valores"],
             -jugadores_ordenados.index(j)
+        )
+    )
+    '''
+    ganador = max(
+        jugadores,
+        key=lambda j: (
+            clasificacion_pares[j]["puntos"],  # Prioridad a la clasificación (3 = Dúplex, 2 = Medias, 1 = Pareja)
+            sorted(clasificacion_pares[j]["valores"], reverse=True),  # Comparación correcta de valores
+            -jugadores_ordenados.index(j)  # Desempate por mano
         )
     )
 
