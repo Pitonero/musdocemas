@@ -82,6 +82,40 @@ def cultura():
 def ranking():
     return render_template('estadisticas.html')
 
+@app.route("/admin", methods=["GET", "POST"])
+def admin_panel():
+   # print("Usuario sesion: ", session.get("usuario"))
+    if session.get("usuario") != "admin":
+        return "Acceso denegado", 403  # Bloquea si no es admin
+
+    resultado = None
+    column_names = []
+    mensaje = None
+    error = None
+
+    if request.method == "POST":
+        consulta = request.form["sql"]
+
+        try:
+            conn = CConexion.ConexionBaseDeDatos()
+            cursor = conn.cursor()            
+            cursor.execute(consulta)
+
+            if consulta.strip().lower().startswith("select"):
+                resultado = cursor.fetchall()
+                column_names = [desc[0] for desc in cursor.description]
+            else:
+                conn.commit()
+                mensaje = f"Consulta ejecutada correctamente. Filas afectadas: {cursor.rowcount}"
+
+            cursor.close()
+            conn.close()
+        except Exception as e:
+            error = f"Error ejecutando la consulta: {str(e)}"
+
+    return render_template("admin.html", resultado=resultado, column_names=column_names, mensaje=mensaje, error=error)
+
+
 @app.route('/iniciosesion')
 def iniciosesion():
     return render_template('identificacion.html')
