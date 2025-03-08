@@ -58,11 +58,13 @@ tables = {}
 salas = {}  # Diccionario para rastrear usuarios en cada sala
 table_counter = 1  # Contador global para las mesas
 
+'''
 @app.before_request
 def iniciar_hilo_limpiador_una_vez():
     if not hasattr(app, '_background_task_started'):
         app._background_task_started = True
         socketio.start_background_task(iniciarLimpiador)
+'''
 
 @app.route('/')
 def index():
