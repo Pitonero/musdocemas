@@ -13,6 +13,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import time
+import threading
 import os
 import traceback
 from flask_sqlalchemy import SQLAlchemy
@@ -42,6 +43,12 @@ partidas = {}
 tables = {}
 salas = {}  # Diccionario para rastrear usuarios en cada sala
 table_counter = 1  # Contador global para las mesas
+
+@app.before_request
+def iniciar_hilo_limpiador_una_vez():
+    if not hasattr(app, '_background_task_started'):
+        app._background_task_started = True
+        socketio.start_background_task(iniciarLimpiador)
 
 @app.route('/')
 def index():
@@ -87,7 +94,7 @@ def admin_panel():
    # print("Usuario sesion: ", session.get("usuario"))
     if session.get("usuario") != "admin":
         return "Acceso denegado", 403  # Bloquea si no es admin
-
+    #calamar1234!
     resultado = None
     column_names = []
     mensaje = None
@@ -138,8 +145,16 @@ def logout2():
     username = session.get('usuario')
     mesa_id = session.get('mesa_id')
     #mesa_id = session['mesa_id']  # Recuperar el identificador de la mesa
-    #mesa = tables.get(mesa_id) 
+    mesa = tables.get(mesa_id) 
     print("DEBUG LOGOUT2 JUGADOR ", username, ". Id de la mesa: ", mesa_id)
+    
+    # Borramos la mesa de Tables si solo hay un jugador real (True equivale a 1):
+    activos = sum(mesa['bot_activo'])
+    print("Vamos a borrar la mesa de bosts activos: ", activos)
+    if activos == 3:
+        del tables[mesa_id]
+        leave_room(mesa_id)  
+
     return render_template('index.html')
 
 @app.route('/logout')
@@ -506,6 +521,7 @@ def handle_join(data):
     print('Entra en Join de usuarios. Usuario connet: ', username, ' usuario de la sesion: ', usersesion)
     if username and username not in logged_players:
         logged_players.append(username)
+
     emit('update_players', logged_players, broadcast=True)  # Envía la lista de usuarios a todos los clientes
     emit('update_tables', tables, broadcast=False) # envía la lista de mesas solo al cliente recien conectado
 
@@ -535,8 +551,10 @@ def handle_disconnect():
         print("DEBUG DESCONECTAR JUGADOR. ", username)
         socketio.emit('mensaje_mesa', {'msg': f"{username}, tiene problemas con su conexión.", 'username': 'Docemas' }, to=mesa_id)        
         mesa = tables[mesa_id]
-        indice_usuario = mesa['jugadores'].index(username)        
-        mesa['bot_activo'][indice_usuario] = True
+        #indice_usuario = mesa['jugadores'].index(username)        
+        #mesa['bot_activo'][indice_usuario] = True
+        #jugador_turno = mesa['jugadores'][mesa['turno_actual']]
+        #verificarBot('DISCONNECT', mesa_id, jugador_turno, mesa['estado_partida'])
 
     print(f"Jugador desconectado: {username}")
     if username in logged_players:
@@ -590,15 +608,19 @@ def join_mesa(data):
     mesa_id = data['mesa_id']
     username = data['username']
     mesa = tables[mesa_id]
+    turno = mesa["jugadores"].index(username)
     # Verificar si el usuario está en la sala
     sid = request.sid  # ID de sesión del cliente actual 
     if mesa_id in rooms(sid):  
         print(f"{username} ya está en la room {mesa_id}")
     else:
-        join_room(str(mesa_id))  # Une al cliente a la sala de la mesa  
-        turno = mesa["jugadores"].index(username)
-        mesa['bot_activo'][turno] = False
-        print(f"{username} se unió a la room {mesa_id}")
+        if mesa['bot_activo'][turno] == True:
+            print(f"BOT: {username} no se unió a la room {mesa_id} por ser un bot.")
+        else:
+            join_room(str(mesa_id))  # Une al cliente a la sala de la mesa  
+            turno = mesa["jugadores"].index(username)
+            mesa['bot_activo'][turno] = False
+            print(f"{username} se unió a la room {mesa_id}")
 
 @socketio.on('entrar_asiento')
 def handle_entrar_asiento(data):
@@ -618,22 +640,26 @@ def handle_entrar_asiento(data):
                 emit('errorAsiento', {'message': f"{username} ya estás ocupando la {id_mesa}.", 'jugador': username, 'indice': asiento, 'mesa':  mesa_id},  broadcast=False)
                 return render_template('sala_espera.html',usuario=username,avatar=avatar)
 
-    join_room(mesa_id)  # Une al cliente a la sala de la mesa  
-    #if table_id in tables and tables[table_id][asiento] is None:
-    mesa = tables[mesa_id]
-    if mesa["jugadores"][asiento] is None:
-        mesa["jugadores"][asiento] = username
-        mesa["avatares"][asiento] = avatar
-        mesa['bot_activo'][asiento] = False
-        tables[mesa_id] = mesa  # Guardar cambios
-    print(f"{username} entró en el asiento {asiento} de {mesa_id} con el avatar {avatar}")
-    # Agregar el username a la sala
-    if mesa_id not in salas:
-        salas[mesa_id] = []
-    salas[mesa_id].append(username)
-    #print("Todas las tablas: ", tables)
-    # Emitir un mensaje solo a los de la room notificando el nuevo jugador
-    emit('chat_message', {'message': f"{username} se ha unido a la mesa {numeroMesa}.", 'username': 'Docemas'}, to=mesa_id)
+    if mesa['bot_activo'][asiento] == True:
+        print(f"BOT: {username} no se unió a la room {mesa_id} por ser un bot.")
+    else:
+        join_room(mesa_id)  # Une al cliente a la sala de la mesa  
+        #if table_id in tables and tables[table_id][asiento] is None:
+        mesa = tables[mesa_id]
+        if mesa["jugadores"][asiento] is None:
+            mesa["jugadores"][asiento] = username
+            mesa["avatares"][asiento] = avatar
+            mesa['bot_activo'][asiento] = False
+            actualizarMesa(mesa_id, mesa)
+            #tables[mesa_id] = mesa  # Guardar cambios
+        print(f"{username} entró en el asiento {asiento} de {mesa_id} con el avatar {avatar}")
+        # Agregar el username a la sala
+        if mesa_id not in salas:
+            salas[mesa_id] = []
+        salas[mesa_id].append(username)
+        #print("Todas las tablas: ", tables)
+        # Emitir un mensaje solo a los de la room notificando el nuevo jugador
+        emit('chat_message', {'message': f"{username} se ha unido a la mesa {numeroMesa}.", 'username': 'Docemas'}, to=mesa_id)
     emit('update_tables', tables, broadcast=True) # Emitir un mensaje a todos en la sala notificando el nuevo jugador
 
 
@@ -645,7 +671,8 @@ def handle_salir_asiento(data):
     mesa = tables[mesa_id]
     if mesa["jugadores"][asiento] == username:
         mesa["jugadores"][asiento] = None
-        tables[mesa_id] = mesa  # Guardar cambios
+        actualizarMesa(mesa_id, mesa)
+        #tables[mesa_id] = mesa  # Guardar cambios
     print("Asiento en salir: ", asiento, "usuario: ", username)
     # Eliminar al cliente de la mesa
     leave_room(mesa_id)    
@@ -689,7 +716,7 @@ def handle_create_table(data):
     puntos_juego = data['puntos_por_juego']
     tiempo_espera = data['tiempo_espera']
     admitir_bots = data['admitir_bots']
-
+    #print ("Admitir bots = ", admitir_bots)
     for table in tables.values():
         if table['owner'] == username:
             emit('chat_message', {'message': f"{username} ya tiene una mesa abierta.", 'username': 'Docemas'}, broadcast=True)
@@ -702,6 +729,7 @@ def handle_create_table(data):
         "nombre": f"Mesa_{table_counter}",
         "owner": username,
         "estado": "En espera",
+        "fin_ronda": False,
         "juegos_vaca": juegos_vaca,
         "puntos_juego": puntos_juego, 
         "espera": tiempo_espera,
@@ -745,15 +773,54 @@ def handle_create_table(data):
                 "Jugador3": {"tiene_juego": False, "puntos": 0},
                 "Jugador4": {"tiene_juego": False, "puntos": 0}
                 },
-        "pares_confirmados": {}
+        "pares_confirmados": {},
+        "total_con_pares": 0,
+        "total_con_juego": 0,
+        "contrarias_pares": False,
+        "contrarias_juego": False,
+        "ultimaActividad": time.time()
     }
 
     print('CREAR MESA PY. Va a hacer el emit desde create_table: ',  table_id, 'nro_table', table_counter )  
     emit('crear_mesaPY', { 'table_name': table_id, 'nro_table': table_counter }, broadcast=True)
     session['mesa_id'] = table_id  # Almacenamos el nombre de la mesa en la sesión del jugador
+ 
     table_counter += 1
     if table_counter > 999: 
         table_counter = 1
+
+def actualizarMesa(mesa_id, mesa):
+
+    mesa["ultimaActividad"] = time.time()
+    tables[mesa_id] = mesa  # Guardar cambios
+    #print("Mesa actual act: ", tables)
+
+def eliminarMesasInactivas():
+    """Elimina las mesas sin actividad por más de 1 hora."""
+    ahora = time.time()
+    print(f"Hora actual: {ahora}")  
+    print("Mesa actual: ", tables)
+    # Usamos list(...) para evitar error al modificar el dict mientras iteramos
+
+    for mesa_id in list(tables.keys()):
+        ultima_actividad = tables[mesa_id]["ultimaActividad"]
+        print(f"Hora actual: {ahora} hora de la mesa: {ultima_actividad}")  
+        if ahora - ultima_actividad > 30:  #3600:   1 hora = 3600 s
+            print(f"Eliminando la mesa inactiva: {mesa_id}")  
+            del tables[mesa_id]
+            leave_room(mesa_id)  
+
+def iniciarLimpiador():
+    """Inicia un hilo que cada 60s llama a eliminarMesasInactivas."""
+    print("LIMPIADOR iniciarLimpiador tables: ", tables)
+    def loop_limpieza():
+        while True:
+            eliminarMesasInactivas()
+            time.sleep(10) # elimina las mesas que no tengan actividad en una hora. Se ejecuta cada 10 minutos: 600 segundos
+    
+    t = threading.Thread(target=loop_limpieza, daemon=True)
+    t.start()
+
 
 # Código para entrar a la mesa de juego:
 @socketio.on('iniciar_partida')
@@ -766,12 +833,31 @@ def iniciar_partida(data):
     jugadoresEnMesa = [j for j in jugadores if j is not None and j != ""]
     #print("INICIAR PARTIDA. JUGADORES EN LA MESA", jugadores)
     if len(jugadoresEnMesa) < 4:
-        jugadores_faltantes = 4 - len(jugadoresEnMesa)
-        #print("INICIAR PARTIDA. FALTAN JUGADORES EN LA MESA", jugadores_faltantes)
-        emit('error', {'message': f"La mesa no está completa. Faltan {jugadores_faltantes} jugadores."},  broadcast=False)
-        usuario = session.get('usuario')
-        avatar = session['avatar']  
-        return render_template('sala_espera.html',usuario=usuario,avatar=avatar)
+            jugadores_faltantes = 4 - len(jugadoresEnMesa)
+            if mesa['bots'] == False:
+                #print("INICIAR PARTIDA. FALTAN JUGADORES EN LA MESA", jugadores_faltantes)
+                emit('error', {'message': f"La mesa no está completa. Faltan {jugadores_faltantes} jugadores."},  broadcast=False)
+                usuario = session.get('usuario')
+                avatar = session['avatar']  
+                return render_template('sala_espera.html',usuario=usuario,avatar=avatar)
+            else:
+                if len(jugadoresEnMesa) == 0:
+                    emit('error', {'message': f"Al menos debe haber un jugador en la mesa."},  broadcast=False)
+                    usuario = session.get('usuario')
+                    avatar = session['avatar']  
+                    return render_template('sala_espera.html',usuario=usuario,avatar=avatar)                 
+                else:    
+                    contador_bot = 1
+                    # Recorremos la lista y rellenamos los huecos vacíos con bots numerados
+                    for i in range(len(mesa['jugadores'])):
+                        if mesa['jugadores'][i] is None:
+                            mesa['jugadores'][i] = f'bot{contador_bot}'
+                            mesa['avatares'][i] = f'../static/img/bot{contador_bot}.png'
+                            mesa['bot_activo'][i] = True
+                            contador_bot += 1
+                    data = {'mesa_id': table_id} 
+                    print("COMPLETA BOTS JUGADORES:", mesa['jugadores'], " y va a repartir cartas")                       
+                    #handle_repartir_cartas(data)
 
     inicializar_partida(table_id)
    # print(f"INICIAR PARTIDA Se va a iniciar la partida en {table_id}. Primero se actualiza sala de espera.)")
@@ -779,6 +865,10 @@ def iniciar_partida(data):
         emit('update_tables', tables, broadcast=True)
        # print(f"INICIAR PARTIDA Se LLMAMA A PARTIDA INICIADA. Primero se actualiza sala de espera.)")
         emit('partida_iniciada', { 'mesa_id': table_id, 'mesa': mesa}, to=table_id)
+        
+        #turno = tables[table_id]['turno_actual']
+        #jugador_turno = tables[table_id]['jugadores'][turno]
+        #verificarBot('INICIAR_PARTIDA', table_id, jugador_turno, mesa['estado_partida'])
 
     except Exception as e:
         print(f"Error al iniciar la partida: {e}")
@@ -799,11 +889,23 @@ def reiniciar_partida(data):
         usuario = session.get('usuario')
         avatar = session['avatar']  
         return render_template('sala_espera.html',usuario=usuario,avatar=avatar)
-
+    mesa["juegos"][0] = 0
+    mesa["juegos"][1] = 0
+    mesa["puntos"][0] = 0  
+    mesa["puntos"][1] = 0    
+    mesa["descartes"] = []
+    mesa["apuesta"] = [0, 0, 0, 0, 0]
+    mesa["acciones"] = [None, None, None, None, None]
+    mesa["apuesta_actual"] = 0
+    mesa["apuesta_anterior"] = 0
+    mesa['estado'] = 'En juego'
+    mesa["mano"] = mesa["mano"]
+    mesa['turno_actual'] = mesa["mano"]
+    mesa['musContador'] = 0
     inicializar_mesa(mesa, table_id)
-    inicializar_partida(table_id)
+    # actualizarMesa(table_id, mesa)
     #print("Mesa:", mesa)
-   # print("Va a llamar a reiniciar_nueva_partida. table_id: ", table_id)
+    #print("Va a llamar a reiniciar_nueva_partida. table_id: ", table_id)
     emit('reiniciar_nueva_partida', { 'mesa_id': table_id}, to=table_id)
 
 # Función que inicializa la mesa para nueva partida
@@ -873,16 +975,25 @@ def handle_repartir_cartas(data):
         mesa['descartes'] = descartes
         mesa['manos'] = manos
         mesa['estado_partida'] = "Mus"
-
-        tables[mesa_id] = mesa  # Guardar cambios en la mesa
-        print("cartas repartidas manos:", manos)
+        mesa['fin_ronda'] = False 
+        
+        actualizarMesa(mesa_id, mesa)
+        
+        print("cartas repartidas manos : ", manos)
+        print("cartas repartidas baraja: ", baraja)
         
         emit('mensaje_mesa', {'msg': f"Reparte {jugador_anterior}. {jugador_turno} habla.", 'username': 'Nueva ronda' }, to=mesa_id)
- 
-         # Emitir las cartas repartidas a los jugadores
-        emit('cartas_repartidas', {'mesa_id': mesa_id, 'manos': manos, 'mano': mano},  to=mesa_id)
 
-        verificarBot(mesa_id,mesa['jugadores'][mesa['turno_actual']], mesa['estado_partida'])
+         # Emitir las cartas repartidas a los jugadores
+        emit('cartas_repartidas', {'mesa_id': mesa_id, 
+                                    'manos': manos, 
+                                    'mano': mano, 
+                                    'bot': mesa['bot_activo'][mano],
+                                    'owner': mesa['owner']
+                                    },  to=mesa_id)
+
+        # No debe llamar porque lo único que hace es enviar las cartas al cliente y las reparte para que las vean
+        #verificarBot('HANDLE REPARTIR CARTAS', mesa_id,jugador_turno, mesa['estado_partida'])
 
     except KeyError as e:
         emit('error', {'message': str(e)}, room=request.sid)
@@ -984,8 +1095,11 @@ def repartir_cartas_jugador(jugador, baraja, num_cartas, descartes, mesa_id):
     - descartes (list): Cartas que quedan como descartadas.
     """
     # Si no hay suficientes cartas en la baraja, usar los descartes
+
+    print("repartir_cartas_jugador. Len(baraja): ", len(baraja), " nro cartas pedidas: ", num_cartas, " jugador: ", jugador, " baraja: ", baraja, " descartes: ", descartes)
+
     if len(baraja) < num_cartas:
-        print("No hay suficientes cartas en la baraja. Usando descartes.")
+        print("repartir_cartas_jugador. No hay suficientes cartas en la baraja. Usando descartes.")
         emit('mensaje_mesa', {'msg': f"{jugador}, no hay suficientes cartas en la baraja. Usando descartes.", 'username': 'Docemas'}, to=mesa_id)
         baraja.extend(descartes)
         random.shuffle(baraja)
@@ -1003,7 +1117,7 @@ def repartir_cartas_jugador(jugador, baraja, num_cartas, descartes, mesa_id):
         carta = baraja.pop()  # Extraer una carta de la baraja
         mano.append(carta)   # Asignar la carta al jugador
 
-    print(f"Cartas repartidas a {jugador}: {mano}")
+    print(f"repartir_cartas_jugador. Cartas repartidas a {jugador}: {mano}")
 
         # Criterio de ordenación para el Mus
     def criterio_mus(carta):
@@ -1018,6 +1132,7 @@ def repartir_cartas_jugador(jugador, baraja, num_cartas, descartes, mesa_id):
 
     # Ordenar las manos de los jugadores según el criterio
     mano.sort(key=criterio_mus, reverse=True)   
+    print(f"repartir_cartas_jugador. Cartas ORDENADAS a {jugador}: {mano}")
 
     return mano, baraja, descartes
 
@@ -1061,7 +1176,8 @@ def handle_descartar_cartas(data):
         mesa['descartes'].extend(descartes)
         print(f"Actualiza tables con mesa ")
         # Guardar los cambios en la estructura de la mesa
-        tables[mesa_id] = mesa
+        actualizarMesa(mesa_id, mesa)
+        #tables[mesa_id] = mesa
         print(f"Va a hacer el emit a clientes Descartes: ", mesa['descartes'])
         # Emitir los descartes actualizados a los clientes
         emit('descartes_actualizados', {'mesa_id': mesa_id, 'descartes': mesa['descartes']},  to=mesa_id)
@@ -1078,18 +1194,21 @@ def handle_pedir_cartas(data):
     """
     Recibe la solicitud de cartas de un jugador y distribuye cartas de la baraja o de los descartes.
     """
+
     mesa_id = data['mesa_id']
     jugador = data['jugador']
     num_cartas = data['num_cartas']
     cartasEnMano = data['cartasRestantes']
+    cartasDescartes = data['cartasSeleccionadas']
 
-    print(f"Cartas en mano de {jugador}: ", cartasEnMano, " cartas solicitadas: ", num_cartas)
+    print(f"handle_pedir_cartas. Jugador: ", jugador, " Cartas en mano de {jugador}: ", cartasEnMano, " cartas solicitadas: ", num_cartas)
 
     try:
         mesa = tables.get(mesa_id)
         if not mesa:
             raise KeyError(f"No se encontró la mesa con ID {mesa_id}")
         baraja = mesa.get('baraja', crear_baraja())
+        mesa['descartes'].extend(cartasDescartes)
         descartes = mesa.get('descartes', [])
         manos = mesa['manos']
         jugadores = mesa['jugadores']
@@ -1107,7 +1226,7 @@ def handle_pedir_cartas(data):
             descartes,
             mesa_id
         )
-        print(f"Cartas nuevas de {jugador}: ", nuevas_cartas)
+        print(f"handle_pedir_cartas. Cartas nuevas de {jugador}: ", nuevas_cartas, " descartes: ", descartes)
         # Actualizar la mano del jugador
         manos[jugador] = []  # Vaciar la mano del jugador
         manos[jugador].extend(cartasEnMano)  # Añadir las cartas que el jugador conservó
@@ -1118,36 +1237,57 @@ def handle_pedir_cartas(data):
         mesa['manos'] = manos
         mesa['turno_anterior'] = mesa['turno_actual']
         mesa['turno_actual'] = (mesa['turno_actual'] + 1) % len(mesa['jugadores'])  
+        turno_descarte = mesa['bot_activo'][mesa['turno_actual']]
        # mesa['turno_actual'] = mesa['mano']
         #jugador_turno = jugadores[mesa["mano"]] 
         jugador_turno = jugadores[mesa["turno_actual"]] 
-        print("Mesa después de pedir cartas:", mesa)
-        print(f'Va a hacer el emit a cartas pedidas con: ', {'jugador': jugador, 'turno_actual': jugador_turno, 'nuevas_cartas': manos[jugador]})
+        #print("Mesa después de pedir cartas:", mesa)
+        print(f'handle_pedir_cartas. Va a hacer el emit a cartas pedidas con: ', {'jugador': jugador, 'turno_actual': jugador_turno, 'nuevas_cartas': manos[jugador]})
+        print("handle_pedir_cartas. bot descarte: ", turno_descarte, " contador: ", mesa["musContador"])
         # Emitir las nuevas cartas al jugador
-        emit('cartas_pedidas', {'jugador': jugador, 'turno_actual': jugador_turno, 'contDescartados': mesa['musContador'], 'nuevas_cartas': manos[jugador]},  to=mesa_id)
-        
+        # Aquí ya se han pedido las cartas. cartas_pedidas pinta las cartas al cliente y pasa turno de descarte al siguiente
+        # Jugador es el que recibe las cartas pedidas y jugador_turno es al que hay que pasar el turno para que se descarte
+        # Desde cartas_ped idas en cliente, si es un bor hay un emit para tratar descarte y otro para tratar mus si el contador = 4.
+        emit('cartas_pedidas', {'jugador': jugador, 
+                'turno_actual': jugador_turno, 
+                'contDescartados': mesa['musContador'], 
+                'nuevas_cartas': manos[jugador], 
+                'bot': turno_descarte, 
+                'owner': mesa['owner'],
+                'num_cartas': data['num_cartas']
+                },  to=mesa_id)
+
+        #if mesa['bot_activo'][mesa['turno_actual']] == True:
+        #    verificarBot('CARTAS_PEDIDAS',mesa_id, jugador_turno, mesa['estado_partida'])
+
         if num_cartas == 1:
             cartulaje = " carta"
         else:
             cartulaje = " cartas"
-        tables[mesa_id] = mesa 
-        emit('mensaje_mesa', {'msg': f"{jugador} pide {num_cartas} {cartulaje}. Habla {jugador_turno}", 'username': 'Docemas'}, to=mesa_id)
-        emit('mostrarMensaje', {'msg': f"{jugador} pide {num_cartas} {cartulaje}",'jugador': jugador, 'num_cartas': num_cartas, 'cartulaje': cartulaje}, to=mesa_id)
-
+      
         if (mesa['musContador'] == 4):
             mesa["musContador"] = 0
-        tables[mesa_id] = mesa  # Guardar cambios
+
+        actualizarMesa(mesa_id, mesa)
+        #tables[mesa_id] = mesa  # Guardar cambios
+
+        emit('mensaje_mesa', {'msg': f"{jugador} pide {num_cartas} {cartulaje}. Habla {jugador_turno}", 'username': 'Docemas'}, to=mesa_id)
+        # Aquí se llama a JS y es donde se simula visualmente el descarte de cada jugador.
+        emit('mostrarMensaje', {'msg': f"{jugador} pide {num_cartas} {cartulaje}",'jugador': jugador, 'num_cartas': num_cartas, 'cartulaje': cartulaje}, to=mesa_id)
+
+        socketio.sleep(2)
 
     except KeyError as e:
-        emit('error', {'mensaje_mesa': str(e)},  to=mesa_id)
+        emit('error', {'mensaje_mesa': str(e)},  to=mesa_id) 
     except ValueError as e:
-        emit('error', {'mensaje_mesa': "No hay suficientes cartas para completar el reparto."},  to=mesa_id)
+        emit('error', {'mensaje_mesa': "No hay suficientes cartas para completar el reparto."},  to=mesa_id) 
 
 #####  CÓDIGO PARA CONTROLAR lOS EVENTOS DE CADA TURNO ####################################################
 
 @socketio.on('tratar_mus')
 def tratar_mus(data):
     ## Comunicamos a todos quien se ha dado MUS y pasamos turno al siguiente
+
     mesa_id = data['mesa_id']
     mesa = tables.get(mesa_id)
     jugadores = mesa['jugadores']
@@ -1159,7 +1299,7 @@ def tratar_mus(data):
     # Si es la primera ronda el nuevo mano corre un turno, sino el mano corre con la nueva ronda
     if mesa["juegos"][0] == 0 and mesa["puntos"][0] == 0 and mesa["juegos"][1] == 0 and mesa["puntos"][1] == 0:
         mesa['mano'] = (mesa['mano'] + 1) % len(mesa['jugadores'])
-        print("[DEBUG] TRATAR MUS. mesa['mano']: ", mesa['mano'])
+        #print("[DEBUG] TRATAR MUS. mesa['mano']: ", mesa['mano'])
 
     mesa['turno_anterior'] = mesa['turno_actual']
     mesa['turno_actual'] = (mesa['turno_actual'] + 1) % len(mesa['jugadores'])   
@@ -1181,7 +1321,7 @@ def tratar_mus(data):
             mesa['turno_anterior'] = mesa['turno_actual']
             mesa['turno_actual'] = (mesa['turno_actual'] + 1) % len(mesa['jugadores'])   
             jugador_turno = jugadores[mesa["turno_actual"]]  
-            print("[DEBUG] TRATAR MUS. CONTADOR ES 4 mesa['mano']: ", mesa['mano'])
+           # print("[DEBUG] TRATAR MUS. CONTADOR ES 4 mesa['mano']: ", mesa['mano'])
 
     if (musContador == 4):
         mesa['estado_partida'] = "Descartar"
@@ -1189,25 +1329,31 @@ def tratar_mus(data):
     emit('actualizar_mus', {
         'musContador': mesa['musContador'],
         'indiceActual': mesa['turno_actual'],        
-        'jugadorActual': jugador_turno
-       # 'bot_activo': mesa['bot_activo'][mesa['turno_actual']] 
+        'jugadorActual': jugador_turno, 
+        'bot': mesa['bot_activo'][mesa['turno_actual']],
+        'owner': mesa['owner']
     }, to=mesa_id)
 
-    if (musContador == 4):
-        mesa["musContador"] = 0
+    if (musContador == 4):  
+        mesa["musContador"] = 0  
         emit('mensaje_mesa', {'msg': f"{jugadorAntes} se da MUS. {jugador_turno} es ahora el mano y le toca descartarse.", 'username': 'Docemas'}, to=mesa_id)       
+        emit('mostrarMensaje', {'msg': f"{jugadorAntes} se da Mus",'jugador': jugadorAntes, 'num_cartas': 0, 'cartulaje': 'Mus'}, to=mesa_id)
     else:
         emit('mensaje_mesa', {'msg': f"{jugadorAntes} se da MUS. Habla {jugador_turno}", 'username': 'Docemas'}, to=mesa_id)
-    tables[mesa_id] = mesa  # Guardar cambios
-    verificarBot(mesa_id, jugador_turno, mesa['estado_partida'])
+    
+    actualizarMesa(mesa_id, mesa)
+    #tables[mesa_id] = mesa  # Guardar cambios
+    
+   # if mesa['bot_activo'][mesa['turno_actual']] == True:
+   #     verificarBot('TRATAR_MUS',mesa_id, jugador_turno, mesa['estado_partida'])
 
 @socketio.on('tratar_corto')
 def tratar_corto(data):
     
     mesa_id = data['mesa_id']
     mesa = tables.get(mesa_id)
-    jugadorCorto = data['jugadorCorto']
     jugadores = mesa['jugadores']
+    jugadorCorto = jugadores[mesa["turno_actual"]]
     mesa['estado_partida'] = "Cortar"
     # Si es la primera ronda el mano es el que corta, sino el que toque
     if mesa["juegos"][0] == 0 and mesa["puntos"][0] == 0 and mesa["juegos"][1] == 0 and mesa["puntos"][1] == 0:
@@ -1236,18 +1382,24 @@ def tratar_corto(data):
     mesa["apuesta"] = [0, 0, 0, 0, 0]
     mesa["apuesta_actual"] = 0
     mesa["apuesta_anterior"] = 0    
-    tables[mesa_id] = mesa  # Guardar cambios
+    mesa['fin_ronda'] = False
+    actualizarMesa(mesa_id, mesa)
+    #tables[mesa_id] = mesa  # Guardar cambios
     reiniciar_hablado(mesa)
     print("lance actual: ", mesa['lance_actual'])
     print(f"TRATAR_CORTO: Va a hacer el emit comenzar ronda con: ", {'jugador turno': jugador_turno})    
+
     emit('comenzar_ronda', {'mesa_id': mesa_id,
-                            'turno_actual': indice_mano, 
-                            'jugador_turno': jugador_turno,
-                            'lance_actual': mesa['lance_actual'], 
-                            'jugadorCorto': jugadorCorto},
-                             to=mesa_id)
-    
-    verificarBot(mesa_id, jugador_turno, mesa['estado_partida'])
+                                'turno_actual': indice_mano, 
+                                'jugador_turno': jugador_turno,
+                                'lance_actual': mesa['lance_actual'], 
+                                'jugadorCorto': jugadorCorto,
+                                'bot': mesa['bot_activo'][mesa['turno_actual']],
+                                'owner': mesa['owner']},
+                                to=mesa_id)
+
+   # if mesa['bot_activo'][indice_mano] == True:
+   #     verificarBot('TRATAR_CORTO', mesa_id, jugador_turno, mesa['estado_partida'])
 
 ##########################################################################################################
 #####  CÓDIGO PARA CONTROLAR LOS LANCES DE CADA TURNO ####################################################
@@ -1270,6 +1422,9 @@ def manejar_accion(data):
     # Recuperar la mesa
     mesa = tables.get(mesa_id)
     puntos_juego = mesa['puntos_juego']
+
+    if mesa['fin_ronda'] == True:
+        mesa['fin_ronda'] = False
 
     if accion == "Órdago": 
         envido = puntos_juego  # Órdago tiene un valor alto fijo de la variable global puntos_juego  
@@ -1330,8 +1485,9 @@ def manejar_accion(data):
                 mesa["acciones"][indice_apuesta] = accion
                 emit('mensaje_mesa', {'msg': f"{jugador} ve el envite.", 'username': mesa["lance_actual"]}, to=mesa_id)
                 ganador = None  # Se determina el ganador al final de la ronda salvo que sea Órdago
-                registrar_lance(mesa, ganador, mesa["lance_actual"], mesa["apuesta"][indice_apuesta], 0)
+                registrar_lance(mesa, ganador, mesa["lance_actual"], mesa["apuesta"][indice_apuesta], 0, indice_apuesta)
                 reiniciar_hablado(mesa)
+                print("[DEBUG] pasar_a_siguiente_lance 1")
                 pasar_a_siguiente_lance(mesa) # Hace el emit
                 return
         
@@ -1345,15 +1501,16 @@ def manejar_accion(data):
                 emit('mensaje_mesa', {'msg': f"{mesa['jugadorAnterior']} dice: {accion}.", 'username': mesa['lance_actual']}, to=mesa_id)
                 print(f"[DEBUG] Manejar Acción: Todos los jugadores han pasado en {mesa['lance_actual']}. Finalizando el lance.")
                 ganador = None  # Se determina el ganador al final de la ronda 
-                registrar_lance(mesa, ganador, mesa["lance_actual"], mesa["apuesta"][indice_apuesta], 1)
+                registrar_lance(mesa, ganador, mesa["lance_actual"], mesa["apuesta"][indice_apuesta], 1, indice_apuesta)
                 reiniciar_hablado(mesa)
+                print("[DEBUG] pasar_a_siguiente_lance 2")
                 pasar_a_siguiente_lance(mesa) # Hace el emit
                 return
             else:
                 print("[DEBUG] No todos han pasado todavía. Avanzando turno.")
-                print("[DEBUG] Manejar Acción: Estado actualizado 2 desde ", mesa['lance_actual'], " - ", accion)
                 emit('mensaje_mesa', {'msg': f"{mesa['jugadorAnterior']} dice: {accion}.", 'username': mesa['lance_actual']}, to=mesa_id)
                 avanzar_turno(mesa)
+                print("[DEBUG] Manejar Acción: Estado actualizado 2 desde ", mesa['lance_actual'], " - ", accion)
                 emit('estado_actualizado', mesa, to=mesa_id)
                 return
     # 
@@ -1371,8 +1528,8 @@ def manejar_accion(data):
             print(f"[DEBUG] Manejar Acción:  {jugador} envida. Apuesta actual: {mesa['apuesta'][indice_apuesta]}")
             reiniciar_hablado(mesa) 
             avanzar_turno(mesa)  # Turno para el siguiente jugador con pares
-            print("[DEBUG] Manejar Acción: Estado actualizado 3 desde ", mesa['lance_actual'], " - ", accion)
             emit('mensaje_mesa', {'msg': f"{jugador} {acciona}.", 'username': mesa['lance_actual']}, to=mesa_id)
+            print("[DEBUG] Manejar Acción: Estado actualizado 3 desde ", mesa['lance_actual'], " - ", accion)
             emit('estado_actualizado', mesa, to=mesa_id)
             return
 
@@ -1381,13 +1538,14 @@ def manejar_accion(data):
                 determinar_ganador_pares(mesa)
                 return
             else: 
-                # El jugador acepta la apuesta; se cierra el lance
+                # El jugador acepta la apuesta; se cierra el lance aquiiiiiiiiiiiiiiiii
                 mesa["acciones"][2] = accion
-                emit('mensaje_mesa', {'msg': f"{jugador} ve el envite.", 'username': mesa['lance_actual']}, to=mesa_id)
+                emit('mensaje_mesa', {'msg': f"{jugador} ve el envite de pares.", 'username': mesa['lance_actual']}, to=mesa_id)
                 print(f"[DEBUG] Manejar Acción: {jugador} ve la apuesta de {mesa['apuesta'][indice_apuesta]}. Cerrando el lance.")
                 ganador = None  # Se determina el ganador al final de la ronda salvo que sea Órdago
-                registrar_lance(mesa, ganador, "Pares", mesa["apuesta"][indice_apuesta], 0)
+                registrar_lance(mesa, ganador, "Pares", mesa["apuesta"][indice_apuesta], 0, indice_apuesta)
                 reiniciar_hablado(mesa)
+                print("[DEBUG] pasar_a_siguiente_lance 3")
                 pasar_a_siguiente_lance(mesa)
                 return
 
@@ -1398,16 +1556,17 @@ def manejar_accion(data):
                 emit('mensaje_mesa', {'msg': f"{mesa['jugadorAnterior']} dice: {accion}.", 'username': mesa['lance_actual']}, to=mesa_id)
                 print(f"[DEBUG] Manejar Acción: PASO, Todos los jugadores han pasado en {mesa['lance_actual']}. Finalizando el lance.")
                 ganador = None  # Se determina el ganador al final de la ronda 
-                registrar_lance(mesa, ganador, mesa["lance_actual"], mesa["apuesta"][indice_apuesta], 1)
+                registrar_lance(mesa, ganador, mesa["lance_actual"], mesa["apuesta"][indice_apuesta], 1, indice_apuesta)
                 reiniciar_hablado(mesa)
+                print("[DEBUG] pasar_a_siguiente_lance 4")
                 pasar_a_siguiente_lance(mesa) # Hace el emit
                 return
             else:
                 print("[DEBUG] No todos han pasado todavía. Avanzando turno.")
                 # Si no, simplemente avanza el turno per tiene que ser al siguiente con pares
                 avanzar_turno(mesa)
-                print("[DEBUG] Manejar Acción: Estado actualizado 4 desde ", mesa['lance_actual'], " - ", accion)
                 emit('mensaje_mesa', {'msg': f"{jugador} dice: {accion}.", 'username': mesa['lance_actual']}, to=mesa_id)
+                print("[DEBUG] Manejar Acción: Estado actualizado 4 desde ", mesa['lance_actual'], " - ", accion)
                 emit('estado_actualizado', mesa, to=mesa_id)
                 return
     # 
@@ -1426,8 +1585,8 @@ def manejar_accion(data):
             print(f"[DEBUG] Manejar Acción: {jugador} envida. Apuesta actual: {mesa['apuesta']}")
             reiniciar_hablado(mesa) 
             avanzar_turno(mesa)  # Turno para el siguiente jugador con juego
-            print("[DEBUG] Manejar Acción: Estado actualizado 5 desde ", mesa['lance_actual'], " - ", accion)
             emit('mensaje_mesa', {'msg': f"{jugador} {acciona}.", 'username': mesa['lance_actual']}, to=mesa_id)
+            print("[DEBUG] Manejar Acción: Estado actualizado 5 desde ", mesa['lance_actual'], " - ", accion)
             emit('estado_actualizado', mesa, to=mesa_id)
             return
         
@@ -1438,11 +1597,12 @@ def manejar_accion(data):
             else: 
                 # El jugador acepta la apuesta; se cierra el lance
                 mesa["acciones"][3] = accion
-                emit('mensaje_mesa', {'msg': f"{jugador} ve el envite.", 'username': mesa['lance_actual']}, to=mesa_id)
+                emit('mensaje_mesa', {'msg': f"{jugador} ve el envite de juego.", 'username': mesa['lance_actual']}, to=mesa_id)
                 print(f"[DEBUG] Manejar Acción: {jugador} ve la apuesta de {mesa['apuesta'][indice_apuesta]}. Cerrando el lance.")
                 ganador = None  # Se determina el ganador al final de la ronda salvo que sea Órdago
-                registrar_lance(mesa, ganador, "Juego", mesa['apuesta'][indice_apuesta], 0)
+                registrar_lance(mesa, ganador, "Juego", mesa['apuesta'][indice_apuesta], 0, indice_apuesta)
                 reiniciar_hablado(mesa)
+                print("[DEBUG] pasar_a_siguiente_lance 5")
                 pasar_a_siguiente_lance(mesa)
                 return
 
@@ -1453,16 +1613,17 @@ def manejar_accion(data):
                 emit('mensaje_mesa', {'msg': f"{mesa['jugadorAnterior']} dice: {accion}.", 'username': mesa['lance_actual']}, to=mesa_id)
                 print(f"[DEBUG] Manejar Acción: PASO. Todos los jugadores con juego han pasado en {mesa['lance_actual']}. Finalizando el lance.")
                 ganador = None  # Se determina el ganador al final de la ronda 
-                registrar_lance(mesa, ganador, mesa["lance_actual"], mesa["apuesta"][indice_apuesta], 1)
+                registrar_lance(mesa, ganador, mesa["lance_actual"], mesa["apuesta"][indice_apuesta], 1, indice_apuesta)
                 reiniciar_hablado(mesa)
+                print("[DEBUG] pasar_a_siguiente_lance 6")
                 pasar_a_siguiente_lance(mesa) # Hace el emit
                 return
             else:
                 print("[DEBUG] No todos han pasado todavía. Avanzando turno.")
                 # Si no, simplemente avanza el turno per tiene que ser al siguiente con juego
                 avanzar_turno(mesa)
-                print("[DEBUG] Manejar Acción: Estado actualizado 6 desde ", mesa['lance_actual'], " - ", accion)
                 emit('mensaje_mesa', {'msg': f"{jugador} dice: {accion}.", 'username': mesa['lance_actual']}, to=mesa_id)
+                print("[DEBUG] Manejar Acción: Estado actualizado 6 desde ", mesa['lance_actual'], " - ", accion)
                 emit('estado_actualizado', mesa, to=mesa_id)
                 return
 
@@ -1471,13 +1632,15 @@ def manejar_accion(data):
         # Registrar el lance actual si nadie apostó
         print("[DEBUG] Manejar Acción: Todos los jugadores han hablado.")
         ganador = determinar_ganador(mesa)
-        registrar_lance(mesa, ganador, mesa["lance_actual"], mesa["apuesta"][indice_apuesta], 1)
+        registrar_lance(mesa, ganador, mesa["lance_actual"], mesa["apuesta"][indice_apuesta], 1, indice_apuesta)
         reiniciar_hablado(mesa)
+        print("[DEBUG] pasar_a_siguiente_lance 7")
         pasar_a_siguiente_lance(mesa) # Ya hace emit 
         return
 
     # Guardar cambios en la mesa
-    tables[mesa_id] = mesa
+    actualizarMesa(mesa_id, mesa)
+    #tables[mesa_id] = mesa
     print("[DEBUG] Manejar Acción: Va a emitir estado actualizado: siguiente turno:", mesa['turno_actual'], " lance: ", mesa['lance_actual'])
     print("[DEBUG] Manejar Acción: Estado actualizado 7 desde ", mesa['lance_actual'], " - ", accion)
     # Enviar estado actualizado a todos los clientes
@@ -1488,8 +1651,9 @@ def procesar_lance(mesa):
     print("[DEBUG] Procesar lance: Todos los jugadores han hablado.")
     indice_apuesta = mesa['lances'].index(mesa["lance_actual"])
     ganador = determinar_ganador(mesa)
-    registrar_lance(mesa, ganador, mesa["lance_actual"], mesa["apuesta"][indice_apuesta], 1)
+    registrar_lance(mesa, ganador, mesa["lance_actual"], mesa["apuesta"][indice_apuesta], 1, indice_apuesta)
     reiniciar_hablado(mesa)
+    print("[DEBUG] pasar_a_siguiente_lance 8")
     pasar_a_siguiente_lance(mesa) # Ya hace emit 
     # Guardar cambios en la mesa
     tables[mesa['nombre']] = mesa    
@@ -1613,6 +1777,7 @@ def avanzar_turno(mesa):
     # Si no hay jugadores válidos, pasar al siguiente lance
     if not jugadores_validos:
         reiniciar_hablado(mesa)
+        print("[DEBUG] pasar_a_siguiente_lance 9")
         pasar_a_siguiente_lance(mesa)
         return
 
@@ -1629,7 +1794,9 @@ def avanzar_turno(mesa):
             break
 
     print(f"[DEBUG] Avanzar_turno. Siguiente turno: {mesa['jugadores'][mesa['turno_actual']]}")
-    verificarBot(mesa["nombre"], mesa['jugadores'][mesa['turno_actual']], mesa['estado_partida'])
+
+   # if mesa['bot_activo'][mesa['turno_actual']] == True:
+   #     verificarBot('AVANZAR_TURNO',mesa["nombre"], mesa['jugadores'][mesa['turno_actual']], mesa['estado_partida'])
 
 
 def reiniciar_hablado(mesa):
@@ -1657,9 +1824,14 @@ def pasar_a_siguiente_lance(mesa):
     mesa["apuesta_actual"] = 0
     mesa["apuesta_anterior"] = 0
 
+    emit('limpiaBocadillos', to=mesa_id)
+    #turno = mesa["turno_actual"]
+    
     if mesa["lance_actual"] == "Juego":
-        finalizar_ronda(mesa) 
-        return
+        print("Entra por lance actual juego, sumamos uno a indice_actual")
+        indice_actual +=1 
+   #     finalizar_ronda(mesa) 
+   #     return
 
     # Bloqueamos los botones de la mesa antes de entrar en Pares o Juego par dar tiempo a que se cante
     #if mesa["lance_actual"] in ["Chica", "Pares"]:
@@ -1668,7 +1840,7 @@ def pasar_a_siguiente_lance(mesa):
     if indice_actual + 1 < len(lances):
         mesa["lance_actual"] = lances[indice_actual + 1]
         mesa["turno_actual"] = mesa["mano"]  # Reiniciar turno para el nuevo lance
-        print(f"[DEBUG] Avanzando al siguiente lance: {mesa['lance_actual']} (índice: {indice_actual})")
+        print(f"[DEBUG] Avanzando al siguiente lance: {mesa['lance_actual']} (índice lances: {indice_actual})")
         reiniciar_hablado(mesa)
         print(f"Se pasa al lance: {mesa['lance_actual']} y se reinicia hablado.")
 
@@ -1687,33 +1859,21 @@ def pasar_a_siguiente_lance(mesa):
             print("[DEBUG] Comenzando el lance de pares.")
             inicializar_pares(mesa)
             # Analizar las manos y determinar quién tiene pares
-            resultados_pares = analizar_pares(mesa["manos"], mesa_id)
+            resultados_pares = analizar_pares(mesa["manos"], mesa_id, mesa['mano'])
             mesa["pares_confirmados"] = resultados_pares  # Guardar en la mesa para referencia
             total_pares = contar_jugadores_con_pares(resultados_pares)
-            mesa["turno_actual"] = encontrar_indice_primer_con_pares( mesa["pares_confirmados"], mesa["mano"])
+            mesa["turno_actual"], jugadorturno = encontrar_indice_primer_con_pares( mesa["pares_confirmados"], mesa["mano"], mesa["jugadores"])
             # jugadores_con_pares = [jugador for jugador, tiene_pares in mesa["pares_confirmados"].items() if tiene_pares]
             # mesa["turno_actual"] = mesa["jugadores"].index(jugadores_con_pares[0])  # Primer jugador con pares
             # primer_turno_con_pares(mesa)
             turno_actual = mesa["turno_actual"]
-            print("[DEBUG] Pares. turno_actual: ", turno_actual, " total jugadores con pares: ", total_pares)
+            print("[DEBUG] Pares. turno_actual: ", turno_actual, "jugador con pares:", jugadorturno, " total jugadores con pares: ", total_pares)
             #turno_actual = encontrar_indice_primer_con_pares(mesa["pares_confirmados"], mesa["mano"])
             contrarias = son_parejas_contrarias(resultados_pares)
             jugadorturno = mesa["jugadores"][turno_actual]
- 
-             # Emitir a todos los clientes la información de pares y enviar jugador primero con pares para posicionar turno
-            print("[DEBUG] Se hace el emit de pares confirmados: ", mesa['pares_confirmados'], " es el turno de :", jugadorturno, " hay ", total_pares, " jugadores con pares.", " contrarias: ", contrarias)
-            emit("pares_confirmados", {'resultados_pares': mesa['pares_confirmados'], 'lance': mesa['lance_actual'], 'total_pares': total_pares, 'turno_actual': turno_actual, 'contrarias': contrarias, 'puntos': mesa['puntos']}, to=mesa_id)
-            socketio.sleep(1)
-            """
-            print("[DEBUG] Pongo sleep de 5 segundos para que canten los pares.")   
-            # Obtener la hora actual
-            hora_actual = datetime.now().time()
-            print("La hora actual es:                       ", hora_actual)
-            time.sleep(5)
-            # Obtener la hora actual
-            hora_actual = datetime.now().time()
-            print("La hora actual es después de 5 segundos: ", hora_actual)      
-            """
+
+            mesa["total_con_pares"] = total_pares
+            mesa["contrarias_pares"] = contrarias
 
             if (total_pares == 0):
                 mesa["lance_actual"] = "Juego"
@@ -1732,6 +1892,22 @@ def pasar_a_siguiente_lance(mesa):
             if (total_pares == 4):
                 emit('mensaje_mesa', {'msg': f"Comienza el lance de pares. Es el turno de {jugadorturno}", 'username': mesa['lance_actual']}, to=mesa_id)
 
+             # Emitir a todos los clientes la información de pares y enviar jugador primero con pares para posicionar turno
+            print("[DEBUG] Se hace el emit de pares confirmados: ", mesa['pares_confirmados'], " es el turno de :", jugadorturno, " hay ", total_pares, " jugadores con pares.", " contrarias: ", contrarias)
+            emit("pares_confirmados", {'resultados_pares': mesa['pares_confirmados'], 
+                                        'lance': mesa['lance_actual'], 
+                                        'total_pares': total_pares, 
+                                        'turno_actual': turno_actual, 
+                                        'contrarias': contrarias,  
+                                        'puntos': mesa['puntos'], 
+                                        'bot': mesa['bot_activo'][turno_actual],
+                                        'owner': mesa['owner'],
+                                        'fin_ronda': mesa['fin_ronda'],
+                                        'estado_partida': mesa['estado_partida'],
+                                        'mano': mesa['mano']}, to=mesa_id)
+
+            socketio.sleep(4)  # Para dar tiempo a que canten los pares en cliente
+
         if mesa["lance_actual"] == "Juego":
             print("[DEBUG] Pasar_a_siguiente_lance: Estado actualizado 11 desde ", mesa['lance_actual'])
             emit('estado_actualizado', mesa, to=mesa_id)     
@@ -1742,11 +1918,18 @@ def pasar_a_siguiente_lance(mesa):
             # Analizar las manos y determinar quién tiene juego
             resultados_juego = analizar_juego(mesa)  
             mesa["estado_juego"] = resultados_juego  # Guardar en la mesa para referencia
-            jugadorturno, indiceJuego, cantidadJ = obtener_info_jugador_con_juego(resultados_juego)
+            jugadorturno, indiceJuego, cantidadJ = obtener_info_jugador_con_juego(resultados_juego, mesa["mano"])
             contrariasJ = son_parejas_contrarias_con_juego(resultados_juego)
             primer_turno_con_juego(mesa)
             mesa["turno_actual"] = indiceJuego
             print("[DEBUG] Juego. turno_actual: ", indiceJuego)
+
+            mesa["total_con_juego"] = cantidadJ
+            mesa["contrarias_juego"] = contrariasJ    
+
+           # if (cantidadJ == 1 or (cantidadJ == 2 and not contrariasJ)):
+           #     mesa['fin_ronda'] = True
+
             if (cantidadJ == 2):
                 if (contrariasJ):
                     emit('mensaje_mesa', {'msg': f"Comienza el lance de juego. Es el turno de {jugadorturno}", 'username': mesa['lance_actual']}, to=mesa_id)
@@ -1755,34 +1938,36 @@ def pasar_a_siguiente_lance(mesa):
             if (cantidadJ == 4):
                 emit('mensaje_mesa', {'msg': f"Comienza el lance de juego. Es el turno de {jugadorturno}", 'username': mesa['lance_actual']}, to=mesa_id)
 
-            """
-            print("[DEBUG] Pongo sleep de 5 segundos para que canten el juego.")
-            # Obtener la hora actual
-            hora_actual = datetime.now().time()
-            print("La hora actual es:                       ", hora_actual)
-            time.sleep(5)
-            # Obtener la hora actual
-            hora_actual = datetime.now().time()
-            print("La hora actual es después de 5 segundos: ", hora_actual)   
-            """
             # Emitir a todos los clientes la información de juego
-            print("[DEBUG] Se hace el emit de juego confirmado: ", mesa['estado_juego'], " jugadorturno: ", jugadorturno, " indicaJuego: ", indiceJuego, " cantidadj: ", cantidadJ, " contrarias: ", contrariasJ)
-            emit("juego_confirmado", {'resultado_juego': mesa['estado_juego'], 'total_juego': cantidadJ, 'turno_actual': jugadorturno, 'contrarias': contrariasJ}, to=mesa_id)
-            socketio.sleep(3)
+            print("[DEBUG] Se hace el emit de juego confirmado: ", mesa['estado_juego'], " jugadorturno: ", jugadorturno, " indiceJuego: ", indiceJuego, " cantidadj: ", cantidadJ, " contrarias: ", contrariasJ)
+            emit("juego_confirmado", {'resultado_juego': mesa['estado_juego'], 
+                                        'total_juego': cantidadJ, 
+                                        'turno_actual': jugadorturno, 
+                                        'contrarias': contrariasJ, 
+                                        'bot': mesa['bot_activo'][indiceJuego],
+                                        'owner': mesa['owner'],
+                                        'fin_ronda': mesa['fin_ronda'],
+                                        'estado_partida': mesa['estado_partida'],
+                                        'mano': mesa['mano']}, to=mesa_id)
 
-        if mesa["lance_actual"] == "Juego":
+            socketio.sleep(4) # Para dar tiempo a que canten el juego en cliente
+
             if (cantidadJ == 0):
                 emit('mensaje_mesa', {'msg': f"Ningún jugador tiene juego. Pasamos al Punto.", 'username': mesa['lance_actual']}, to=mesa_id)
                 mesa["lance_actual"] = "Punto"
             elif (cantidadJ == 1):
                 emit('mensaje_mesa', {'msg': f"Solo {jugadorturno} tiene juego. Finaliza la ronda.", 'username': mesa['lance_actual']}, to=mesa_id)
+                print("Entra por finalizar ronda 2. Solo un jugador tiene juego. Finaliza la ronda.")
                 finalizar_ronda(mesa)
+                return
             elif (cantidadJ == 2 and not contrariasJ):
                     emit('mensaje_mesa', {'msg': f"Solo una pareja tiene juego. Finaliza la ronda.", 'username': mesa['lance_actual']}, to=mesa_id)
+                    print("Entra por finalizar ronda 3. Solo una pareja tiene juego. Finaliza la ronda.")
                     finalizar_ronda(mesa)
+                    return
 
         if mesa["lance_actual"] == "Punto":           
-            jugadorturno, indiceJuego, cantidadJ = obtener_info_jugador_con_juego(mesa["estado_juego"])
+            jugadorturno, indiceJuego, cantidadJ = obtener_info_jugador_con_juego(mesa["estado_juego"], mesa["mano"])
             print("[DEBUG] Comenzando el lance de Punto. cantidadJ: ", cantidadJ)
             if (cantidadJ == 0):
                     mesa["turno_actual"] = mesa["mano"]
@@ -1793,8 +1978,10 @@ def pasar_a_siguiente_lance(mesa):
             print("[DEBUG] Pasar_a_siguiente_lance: Estado actualizado 12 desde ", mesa['lance_actual'])
             emit('estado_actualizado', mesa, to=mesa_id)
 
-        verificarBot(mesa_id,mesa['jugadores'][mesa['turno_actual']], mesa['estado_partida'])
+      #  if mesa['bot_activo'][mesa['turno_actual']] == True:
+      #      verificarBot('PASAR_A_SIGUIENTE_LANCE',mesa_id,mesa['jugadores'][mesa['turno_actual']], mesa['estado_partida'])
     else:
+        print("Entra por finalizar ronda 4")
         finalizar_ronda(mesa)  # Si se completaron todos los lances, finalizar la ronda
 
 
@@ -1863,6 +2050,30 @@ def son_parejas_contrarias_con_juego(jugadores):
     else:
         return False
 
+def encontrar_indice_primer_con_pares(pares_confirmados, mano, jugadores):
+    """
+    Encuentra el índice del primer jugador con pares comenzando desde el 'mano'.
+    
+    Args:
+        pares_confirmados (dict): Diccionario con jugadores y si tienen pares (True/False).
+        mano (int): Índice del jugador que es 'mano' en la lista de jugadores.
+        jugadores (list): Lista ordenada de jugadores según el orden en la mesa.
+    
+    Returns:
+        tuple: (índice, jugador) del primer jugador con pares, o (-1, None) si no se encuentra ninguno.
+    """
+    num_jugadores = len(jugadores)
+    
+    # Recorremos circularmente desde el índice 'mano'
+    for i in range(num_jugadores):
+        indice_actual = (mano + i) % num_jugadores
+        jugador_actual = jugadores[indice_actual]
+        if pares_confirmados.get(jugador_actual, False):
+            return indice_actual, jugador_actual
+    
+    return -1, None
+
+'''
 def encontrar_indice_primer_con_pares(pares_confirmados, mano):
     """
     Encuentra el índice del primer jugador con pares comenzando desde el 'mano'.
@@ -1883,11 +2094,46 @@ def encontrar_indice_primer_con_pares(pares_confirmados, mano):
         jugador_actual = jugadores[indice_actual]
 
         if pares_confirmados[jugador_actual]:  # Verifica si tiene pares (True)
-            return indice_actual  # Devuelve el índice del jugador
+            return indice_actual, jugador_actual  # Devuelve el índice del jugador y el jugador
 
     return -1  # Si ningún jugador tiene pares
+'''
+def obtener_info_jugador_con_juego(jugadores, mano):
+    """
+    Busca el primer jugador con 'tiene_juego' True de forma circular
+    comenzando desde el índice 'mano' y cuenta cuántos jugadores tienen juego.
 
-def obtener_info_jugador_con_juego(jugadores):
+    Args:
+        jugadores (list): Lista de diccionarios, donde cada diccionario representa a un jugador.
+                            Cada diccionario debe tener al menos las claves 'jugador' y 'tiene_juego'.
+        mano (int): Índice del jugador que es mano en el orden de la mesa.
+
+    Returns:
+        tuple: (nombre del primer jugador con juego, índice, total de jugadores con juego)
+               Si ningún jugador tiene juego, devuelve (None, -1, 0).
+    """
+    num_jugadores = len(jugadores)
+    jugador_con_juego = None
+    indice_jugador_con_juego = -1
+
+    # Recorremos circularmente a partir del índice 'mano'
+    for i in range(num_jugadores):
+        indice_actual = (mano + i) % num_jugadores
+        jugador = jugadores[indice_actual]
+        print(f"[DEBUG] Revisando jugador {jugador['jugador']}, tiene_juego: {jugador['tiene_juego']}")
+        if jugador['tiene_juego']:
+            jugador_con_juego = jugador['jugador']
+            indice_jugador_con_juego = indice_actual
+            break
+
+    # Contamos el total de jugadores que tienen juego
+    num_jugadores_con_juego = sum(1 for jugador in jugadores if jugador['tiene_juego'])
+
+    return jugador_con_juego, indice_jugador_con_juego, num_jugadores_con_juego
+
+
+'''
+def obtener_info_jugador_con_juego(jugadores, mano):
     """
     Busca el primer jugador con 'tiene_juego' a True y cuenta cuántos jugadores lo tienen.
 
@@ -1912,8 +2158,9 @@ def obtener_info_jugador_con_juego(jugadores):
                 jugador_con_juego = jugador['jugador']
                 indice_jugador_con_juego = i  # Guardamos el índice
 
-
     return jugador_con_juego, indice_jugador_con_juego, num_jugadores_con_juego
+'''
+
 
 def inicializar_pares(mesa):
     """
@@ -2041,7 +2288,7 @@ def determinar_ganador(mesa):
     print("Determinar ganador. lance actual: ", mesa['lance_actual'])
 
 
-def registrar_lance(mesa, ganador, lance, apuesta_actual, estado_apuesta):
+def registrar_lance(mesa, ganador, lance, apuesta_actual, estado_apuesta, indice_apuesta):
     """
     Registra el resultado de un lance para ser contabilizado al final de la ronda.
     Si el lance es "Pares" y solo una pareja tiene pares, asigna los puntos directamente.
@@ -2063,45 +2310,49 @@ def registrar_lance(mesa, ganador, lance, apuesta_actual, estado_apuesta):
 
     if apuesta_actual > 0 and estado_apuesta == 1: # ha habido envite y/o reemvite y no se ha visto
         print("[DEBUG] Entra en registrar lance de {lance}. Jugador Apuesta: ", mesa['jugadorApuesta'], " pareja1: ", pareja1)
+        apuesta_actual = 0
+        mesa["apuesta"][indice_apuesta] = 0
         if mesa["jugadorApuesta"] in pareja1:
             # La pareja contraria es pareja1, sumamos punto en el índice 0
-            mesa["puntos"][0] += amarracos
+            mesa["puntos"][0] = amarracos
             emit('mensaje_mesa', {'msg': f"¡La pareja 1 gana 1 punto a {lance}!", 'username': mesa['lance_actual']}, to=mesa_id)
             if lance == "Grande":
-                mesa["grande"][0] += amarracos
+                mesa["grande"][0] = amarracos
             elif lance == "Chica":
-                mesa["chica"][0] += amarracos
+                mesa["chica"][0] = amarracos
             elif lance == "Pares":
-                mesa["pares"][0] += amarracos
+                mesa["pares"][0] = amarracos
             elif lance == "Juego":
-                mesa["juego"][0] += amarracos
+                mesa["juego"][0] = amarracos
             elif lance == "Punto":
-                mesa["punto"][0] += amarracos                                
+                mesa["punto"][0] = amarracos                                
         #elif set(mesa["pareja_contraria"]) == set(pareja2):
         else:
             # La pareja contraria es pareja2, sumamos punto en el índice 0
-            mesa["puntos"][1] += amarracos
+            mesa["puntos"][1] = amarracos
             emit('mensaje_mesa', {'msg': f"¡La pareja 2 gana 1 punto a {lance}!", 'username': mesa['lance_actual']}, to=mesa_id)
             if lance == "Grande":
-                mesa["grande"][1] += amarracos
+                mesa["grande"][1] = amarracos
             elif lance == "Chica":
-                mesa["chica"][1] += amarracos
+                mesa["chica"][1] = amarracos
             elif lance == "Pares":
-                mesa["pares"][1] += amarracos
+                mesa["pares"][1] = amarracos
             elif lance == "Juego":
-                mesa["juego"][1] += amarracos
+                mesa["juego"][1] = amarracos
             elif lance == "Punto":
-                mesa["punto"][1] += amarracos  
+                mesa["punto"][1] = amarracos  
     
+
     print("[DEBUG] Entra en registrar lance. Valor de Puntos: ", mesa['puntos'])
     mesa["jugadorApuesta"] = None
     
     mesa["apuesta_anterior"] = 0
     mesa["apuesta_actual"] = 0
-
+  #aquiiiiiiiiiiiiiiiiiiiiiiii
     if mesa["puntos"][0] >= mesa['puntos_juego'] or mesa["puntos"][1] >= mesa['puntos_juego']:
         emitir_actualizar_interfaz(mesa)
         verificar_finaliza_juego_partida(mesa)
+        #inicializar_mesa(mesa, mesa['nombre'])
         return 
 
     if lance == "Pares" and ganador is None:
@@ -2130,12 +2381,14 @@ def finalizar_ronda(mesa):
     Procesa los resultados de todos los lances registrados, actualiza el marcador,
     y valida si una pareja ha ganado el juego.
     """
-    print("[DEBUG] Entra en finalizar ronda. ")
-    
+    print("[DEBUG] Entra en finalizar ronda. Fin ronda: ", mesa['fin_ronda'])
     #emit('bloquear_mesa_botones', mesa["lance_actual"], to=mesa_id)
 
     if "resultados_lances" not in mesa:
         return
+
+   # if mesa['fin_ronda'] == True:
+   #     return
 
     # El mano correo un turno para la nueva ronda
     #mesa['mano'] = (mesa['mano'] + 1) % len(mesa['jugadores'])
@@ -2160,10 +2413,12 @@ def finalizar_ronda(mesa):
     # Actualizar el resultado del lance con el ganador determinado
     #time.sleep(1)
     
-    # Emitir actualizar_interfaz_ronda
+    # Emitir actualizar_interfaz_ronda para que se vea en cliente
     emitir_actualizar_interfaz(mesa)
 
     verificar_finaliza_juego_partida(mesa)
+
+    inicializar_mesa(mesa, mesa['nombre'])
 
 
 def emitir_actualizar_interfaz(mesa):
@@ -2173,7 +2428,7 @@ def emitir_actualizar_interfaz(mesa):
     indice_apuesta = mesa['lances'].index(mesa["lance_actual"])
     apuesta = mesa["apuesta"][indice_apuesta]
     mesa["mano"] = (mesa["mano"] + 1) % len(mesa["jugadores"])
-
+    mesa['fin_ronda'] = True
    # Emitir actualizar_interfaz_rondao
     emit("actualizar_interfaz_ronda", {
         "turno_actual": mesa['mano'],        
@@ -2188,21 +2443,27 @@ def emitir_actualizar_interfaz(mesa):
         "manos": mesa['manos'],
         "juegos_vaca": mesa['juegos_vaca'],
         "puntos_juego": mesa['puntos_juego'],
-        "apuesta": apuesta
+        "apuesta": apuesta,
+        "finRonda": mesa['fin_ronda']
     }, to=mesa_id)
 
 def verificar_finaliza_juego_partida(mesa):
 
-    print("[DEBUG] Ronda finalizada. Estado actualizado enviado a los clientes. Mesa:", mesa)
+    #print("[DEBUG] verificar_finaliza_juego_partida. Ronda finalizada. Mesa: ", mesa)
 
     mesa_id = mesa['nombre']
-
+    mesa["grande"] = [0,0]
+    mesa["chica"] = [0,0]
+    mesa["pares"] = [0,0]    
+    mesa["juego"] = [0,0]    
+    mesa["punto"] = [0,0]  
     # Validar si alguna pareja supera el valor de puntos_juego
     for equipo, puntos in enumerate(mesa["puntos"]):
         if puntos >= mesa['puntos_juego']:
             mesa["juegos"][equipo] += 1  
             mesa["puntos"] = [0,0]  
-            emit('mensaje_mesa', {'msg': f"¡La pareja {equipo + 1} ha ganado el juego con {puntos} puntos!", 'username': mesa['lance_actual']}, to=mesa_id)
+            emit('mensaje_mesa', {'msg': f"¡La pareja {equipo + 1} ha ganado el juego!", 'username': mesa['lance_actual']}, to=mesa_id)
+         #   emit('mensaje_mesa', {'msg': f"¡La pareja {equipo + 1} ha ganado el juego con {puntos} puntos!", 'username': mesa['lance_actual']}, to=mesa_id)
             print(f"[DEBUG] El juego ha terminado. Ganadores: Pareja {equipo + 1}")
 
     # Validar si alguna pareja supera el valor de la variable global juegos_vaca
@@ -2213,13 +2474,11 @@ def verificar_finaliza_juego_partida(mesa):
             emit('mensaje_mesa', {'msg': f"¡La pareja {equipo + 1} ha ganado la partida. Gana los {juegos} juegos!", 'username': 'Final'}, to=mesa_id)
             print(f"[DEBUG] La partida ha terminado. Ganadores: Pareja {equipo + 1}")
 
-    inicializar_mesa(mesa, mesa_id)
-
-
 def inicializar_mesa(mesa, mesa_id):
     # Limpiar los resultados de la ronda anterior para preparar la nueva
-    print("[DEBUG] verificar_finaliza_juego_partida. mesa['mano']: ", mesa['mano'])
+    print("[DEBUG] inicializar_mesa. mesa['mano']: ", mesa['mano'])
     mesa['estado_partida'] = "Repartir"
+    #mesa['fin_ronda'] = False
     mesa["lance_actual"] == "Grande"
     mesa["turno_actual"] = mesa["mano"]
     mesa["musContador"] = 0
@@ -2238,7 +2497,13 @@ def inicializar_mesa(mesa, mesa_id):
     mesa["pares"] = [0,0]    
     mesa["juego"] = [0,0]    
     mesa["punto"] = [0,0]    
-    tables[mesa_id] = mesa  # Guardar cambios
+    mesa["total_con_pares"] = 0
+    mesa["total_con_juego"] = 0
+    mesa["contrarias_pares"] = False
+    mesa["contrarias_juego"] = False    
+
+    actualizarMesa(mesa_id, mesa)
+    #tables[mesa_id] = mesa  # Guardar cambios
     print(f"Mesa {mesa_id} reiniciada para una nueva ronda.")
 
 
@@ -2300,11 +2565,13 @@ def determinar_ganador_grande(mesa):
     equipo = parejas[ganador]
 
     if mesa["apuesta"][0] >= mesa['puntos_juego']:  # Se valida el ganador si hay Órdago
+        print(f"[DEBUG] Grande: mesa['apuesta'][0]: {mesa['apuesta'][0]} mesa['puntos_juego']: {mesa['puntos_juego']}")
         mesa["puntos"][equipo] += mesa['puntos_juego']
         mesa["grande"][equipo] += mesa['puntos_juego']
         # Emitir actualizar_interfaz_ronda
         emitir_actualizar_interfaz(mesa)
         verificar_finaliza_juego_partida(mesa)
+        #inicializar_mesa(mesa, mesa['nombre'])        
         return 
    
     # Caso 1: Todos pasan. Se asigna el punto de la grande en paso a la pareja ganadora
@@ -2382,6 +2649,7 @@ def determinar_ganador_chica(mesa):
         # Emitir actualizar_interfaz_ronda
         emitir_actualizar_interfaz(mesa)        
         verificar_finaliza_juego_partida(mesa)
+      #  inicializar_mesa(mesa, mesa['nombre'])        
         return 
 
     # Caso 1: Todos pasan. Se asigna el punto de la chica en paso a la pareja ganadora
@@ -2505,6 +2773,7 @@ def determinar_ganador_pares(mesa):
         # Emitir actualizar_interfaz_ronda
         emitir_actualizar_interfaz(mesa)
         verificar_finaliza_juego_partida(mesa)
+       # inicializar_mesa(mesa, mesa['nombre'])        
         return
 
     # Caseo 1: Calcular los puntos de la pareja ganadora
@@ -2609,6 +2878,7 @@ def determinar_ganador_juego(mesa):
         # Emitir actualizar_interfaz_ronda
         emitir_actualizar_interfaz(mesa)
         verificar_finaliza_juego_partida(mesa)
+       # inicializar_mesa(mesa, mesa['nombre'])        
         return 
 
     # Identificar al compañero del ganador
@@ -2703,6 +2973,7 @@ def determinar_ganador_punto(mesa):
         # Emitir actualizar_interfaz_ronda
         emitir_actualizar_interfaz(mesa)
         verificar_finaliza_juego_partida(mesa)
+      #  inicializar_mesa(mesa, mesa['nombre'])        
         return 
 
     # Caso 1: Todos pasan. Se asigna el punto del Punto en paso a la pareja ganadora
@@ -2789,6 +3060,48 @@ def evaluar_juego(mano):
         return suma
     return 0
 
+def analizar_pares(manos, mesa_id, mano):
+    """
+    Analiza las manos de los jugadores para determinar si tienen pares,
+    recorriendo el orden de jugadores de forma circular a partir del que es mano.
+    Se asume que 'mesa' es un diccionario que contiene, al menos, las claves
+    'mano' (índice del jugador mano) e 'id' (identificador para emitir mensajes).
+    """
+    print("[DEBUG] Entra en analizar pares.")
+
+    mapa_valores = {
+        "1": 1, "2": 1, "3": 12, "4": 4, "5": 5, "6": 6, "7": 7,
+        "10": 10, "11": 11, "12": 12
+    }
+    resultados = {}
+
+    # Convertir las claves del diccionario de manos en una lista ordenada
+    jugadores = list(manos.keys())
+    total_jugadores = len(jugadores)
+    print("MesaId: ", mesa_id, " mano: ", mano)
+    # Índice del jugador que es mano
+    start_index = mano
+    
+    # Reordenar la lista de jugadores de forma circular, empezando por el índice 'mano'
+    jugadores_ordenados = jugadores[start_index:] + jugadores[:start_index]
+    
+    for jugador in jugadores_ordenados:
+        mano = manos[jugador]
+        valores = [mapa_valores[carta[:-1]] for carta in mano]
+        pares = [v for v in set(valores) if valores.count(v) > 1]
+        tiene_pares = len(pares) > 0
+        resultados[jugador] = tiene_pares
+        print(f"[DEBUG] Jugador: {jugador}, Mano: {mano}, Tiene pares: {tiene_pares}")
+        
+        if tiene_pares:
+            emit('mensaje_mesa', {'msg': f"{jugador} tiene pares.", 'username': 'Pares'}, to=mesa_id)
+        else:
+            emit('mensaje_mesa', {'msg': f"{jugador} NO tiene pares.", 'username': 'Pares'}, to=mesa_id)
+    
+    return resultados
+
+
+'''
 def analizar_pares(manos, mesa_id):
     """
     Analiza las manos de los jugadores para determinar si tienen pares.
@@ -2811,6 +3124,7 @@ def analizar_pares(manos, mesa_id):
             emit('mensaje_mesa', {'msg': f"{jugador} NO tiene pares.", 'username': 'Pares'}, to=mesa_id)
     
     return resultados
+'''
 
 def evaluar_condiciones_pares(mesa):
     """
@@ -2839,14 +3153,14 @@ def evaluar_condiciones_pares(mesa):
     if pares_pareja1 > 0 and pares_pareja2 == 0:
         print("[DEBUG] Solo la pareja 1 tiene pares. Finalizando el lance.")
        # emit('mensaje_mesa', {'msg': f"Solo la pareja 1 tiene pares. Pasamos al juego.", 'username': 'Docemas'}, broadcast=True)
-        registrar_lance(mesa, pareja1[0], "Pares", mesa["apuesta"][3], 0)
+        registrar_lance(mesa, pareja1[0], "Pares", mesa["apuesta"][3], 0, 3)
         #return True
 
     elif pares_pareja2 > 0 and pares_pareja1 == 0:
         print("[DEBUG] Solo la pareja 2 tiene pares. Finalizando el lance.")
         #emit('mensaje_mesa', {'msg': f"Solo la pareja 2 tiene pares. Pasamos al juego.", 'username': 'Docemas'}, broadcast=True)
         # registrar_lance(mesa, None, "Pares", Apusta o deje, 0-Cobrada o 1- pte ver ganador)  # Registrar el resultado para la pareja con pares
-        registrar_lance(mesa, pareja2[0], "Pares", mesa["apuesta"][3], 0)
+        registrar_lance(mesa, pareja2[0], "Pares", mesa["apuesta"][3], 0, 3)
        # return True
 
    # return False  # Continuar con el lance de pares
@@ -2860,7 +3174,7 @@ def analizar_juego(mesa):
         tiene_juego = puntos >= 31
         resultados.append({"jugador": jugador, "tiene_juego": tiene_juego, "puntos": puntos})
     print("[DEBUG] Entra en analizar juego. Resultados: ", resultados)      
-    mesa["estado_juego"] = resultados
+   # mesa["estado_juego"] = resultados
     return resultados
 
 
@@ -2892,18 +3206,56 @@ def procesar_lance_juego(mesa):
 
     #print(decision_mus_o_corto(mesa))
     #print(respuesta_bot(mesa))
+import pdb
+@socketio.on('BOT_tratar_descartar')
+def BOT_tratar_descartar(data):
+    ## Emula a iniciarPeriodoDescarte del cliente. El cliente elige que cartas pide 
+    mesa_id = data['mesa_id']
+    mesa = tables.get(mesa_id)
+    jugador_turno = data['jugadorTurno']
+    print("BOTs activos : ", mesa['bot_activo'], " Jugador: ", jugador_turno)
+    print("BOT Entra por BOT_tratar_descartar. Jugador: ", jugador_turno)
+    socketio.sleep(3)
+    descarte_bot(mesa_id, jugador_turno)
+  #  pdb.set_trace()
 
-import random
+@socketio.on('BOT_tratar_mus_corto')
+def BOT_tratar_mus_corto(data):
+    ## Emula a pulsar Muo o Corto del cliente.  
+    mesa_id = data['mesa_id']
+    mesa = tables.get(mesa_id)
+    jugador_turno = data['jugadorTurno']
+    print("BOTs activos : ", mesa['bot_activo'], " Jugador: ", jugador_turno)
+    print("BOT Entra por BOT_tratar_mus_corto. Jugador: ", jugador_turno)
+    socketio.sleep(1)
+    mus_corto_bot(mesa_id, jugador_turno) 
 
-def verificarBot(mesa_id, jugador_turno, estado_partida):
+#import pdb
+@socketio.on('BOT_tratar_juego')
+def BOT_tratar_juego(data):
+   # pdb.set_trace()
+    ## Emula a pulsar algún botón del cliente en la partida 
+    aonde = data['donde']
+    mesa_id = data['mesa_id']
+    mesa = tables.get(mesa_id)
+    jugador_turno = data['jugadorTurno']
+    print("  ")
+    print("BOT Entra por BOT_tratar_partida. Desde donde:", aonde, " Lance: ", mesa['lance_actual'], "BOTs activos : ", mesa['bot_activo'], " Jugador: ", jugador_turno)
+    socketio.sleep(1)
+    jugar_partida(mesa_id, jugador_turno)
+ 
+'''
+def verificarBot(origen, mesa_id, jugador_turno, estado_partida):
     mesa = tables[mesa_id]  
     turno = mesa["jugadores"].index(jugador_turno)
-    print("BOTs activos: ", mesa['bot_activo'], " Turno", turno, " jugador: ", jugador_turno, " estado_partida: ", estado_partida)
+    print("BOTs")
+    print("Jugadores mesa:", mesa['jugadores'], " Lance: ", mesa['lance_actual'])
+    print("BOTs activos : ", mesa['bot_activo'], " Origen: ", origen, " estado_partida: ", estado_partida, " Turno", turno, " Jugador: ", jugador_turno)
 
     if mesa['bot_activo'][turno] == True:
         hora_actual = datetime.now().time()
-        print("BOTs La hora actual es:                       ", hora_actual)
-        socketio.sleep(1)        
+        print("BOTs inicio. La hora actual es:    ", hora_actual)
+        #socketio.sleep(1)
         if estado_partida == "Mus":
             print("BOT Entra por Mus")  
             mus_corto_bot(mesa_id, jugador_turno)      
@@ -2918,29 +3270,38 @@ def verificarBot(mesa_id, jugador_turno, estado_partida):
         if estado_partida == "Jugar":
             print("BOT Entra por Jugar")
             jugar_partida(mesa_id, jugador_turno)
-        #time.sleep(5)
-        socketio.sleep(3)
+        #socketio.sleep(2)
         hora_actual = datetime.now().time()
-        print("BOTs La hora actual es después de 4 segundos: ", hora_actual) 
-
+        print("BOTs fin. La hora actual es después de 3 segundos: ", hora_actual) 
+'''
 # Actúa como si se hubiera pulsado corto o mus
 def mus_corto_bot(mesa_id, jugador_turno):
     mesa = tables[mesa_id]  
-    respuestaMC = decision_mus_o_corto(mesa)
+    mano = mesa["manos"].get(jugador_turno)
+    respuestaMC = decision_mus_o_corto(mano)
     print("BOT. respuestaMC: ", respuestaMC)
     if respuestaMC == 'Mus':
-        tratar_mus(mesa_id)
+        print("BOT ", jugador_turno, " Entra por Mus a TRATAR_MUS")  
+        data = {'mesa_id': mesa_id}
+        tratar_mus(data)
     else:    
+        print("BOT ", jugador_turno, " Entra por Corto a TRATAR_CORTO")  
         data = {'mesa_id': mesa_id, 'jugadorTurno': mesa['jugadores'][mesa['turno_actual']], 'indiceTurno': mesa['turno_actual'], 'jugadorCorto': jugador_turno}
         tratar_corto(data)
+
+# Actúa como si pidiera cartas
+#def reparte_bot(mesa_id):
+#        data = {'mesa_id': mesa_id}
+#        handle_repartir_cartas(data)
 
 # Actúa como si se descartase
 def descarte_bot(mesa_id, jugador):
     mesa = tables[mesa_id]  
     mano_jugador = mesa['manos'][jugador]
-    quedarse, descartar, num_descartes = analizar_mano(mano_jugador)
-    print("BOT. analizar_mano: ", mano_jugador, " quedarse: ", quedarse, " descartar: ", descartar, "nro descartes: ", num_descartes)
-    data = {'mesa_id': mesa_id, 'jugador': jugador, 'num_cartas': num_descartes, 'cartasRestantes': descartar }
+    resultado = analizar_mano(mano_jugador)
+    quedarse, descartar, num_descartes, cartasSeleccionadas = resultado['quedarse'], resultado['descartar'], resultado['num_descartes'], resultado['cartasSeleccionadas']
+    print("BOT. Analizar_mano: ", mano_jugador, " quedarse: ", quedarse, " descartar: ", descartar, "nro descartes: ", num_descartes, " descartes: ", cartasSeleccionadas)
+    data = {'mesa_id': mesa_id, 'jugador': jugador, 'num_cartas': num_descartes, 'cartasRestantes': quedarse, 'cartasSeleccionadas': cartasSeleccionadas}
     handle_pedir_cartas(data)
 
 # Actúa como si se hubiera pulsado Envido, Paso, Órdago o Veo
@@ -2949,127 +3310,378 @@ def jugar_partida(mesa_id, jugador):
     decision, apuesta = respuesta_bot(mesa)
     print("BOT. Decisión: ", decision, " apuesta: ", apuesta)
     data = {'mesa_id': mesa_id, 'jugador': jugador, 'accion': decision, 'envido': apuesta }
+    print("BOT. Va a llamar a manejar_accion desde jugar_partida BOT")
     manejar_accion(data)
 
-# Actúa como si se hubiera pulsado un botón de acción
-def decision_mus_o_corto(mesa):
+import random
+
+# Actúa como si se hubiera pulsado un botón de Mus o Corto
+def decision_mus_o_corto(mano):
     def evaluar_mano():
-        mano_bot = mesa['manos'][mesa['jugadores'][mesa['turno_actual']]]
-        cartas = [int(carta[:-1]) for carta in mano_bot]
+        mano_bot = mano
+        print("BOT Mano original:", mano_bot)
+
+        cartas = []
+        for carta in mano_bot:
+            valor = carta[:-1]  # Extrae el valor numérico ignorando el palo
+
+            try:
+                valor_numerico = int(valor)
+            except ValueError:
+                valor_numerico = 10  # Figuras como 10
+
+            # Ajustar valores según las reglas del juego
+            if valor_numerico == 3:
+                valor_numerico = 12  # Treses cuentan como Reyes
+            elif valor_numerico == 2:
+                valor_numerico = 1  # Doses cuentan como Ases
+            
+            cartas.append(valor_numerico)
+
+        print("BOT Mano convertida:", cartas)
+
         return sorted(cartas, reverse=True)
 
+    # Obtener la mano evaluada
     mano_bot = evaluar_mano()
-    juego = sum(mano_bot) in [31, 32, 40]
+    print("BOT Mano evaluada:", mano_bot)
+
+    # **Corrección en la suma para juego y punto**
+    # Todas las figuras (10, 11, 12, R) deben contar como 10
+    mano_para_juego = [10 if carta >= 10 else carta for carta in mano_bot]
+    suma_mano = sum(mano_para_juego)
+
+    # Revisar si la suma está dentro de los valores de juego válidos
+    juego = suma_mano in [31, 32, 40]
+
+    # Detección corregida de pares y medias duples
     pares = len(set(mano_bot)) < len(mano_bot)
-    medias_duples = any(mano_bot.count(carta) == 2 for carta in mano_bot)
-    
-    if mano_bot.count(12) >= 2 and not (juego or pares or medias_duples):
-        return 'Mus'
-    else:
+    pares_en_mano = [carta for carta in set(mano_bot) if mano_bot.count(carta) == 2]
+    medias_duples = len(pares_en_mano) >= 2 or any(mano_bot.count(carta) == 3 for carta in mano_bot)
+
+    # Resultados corregidos
+    #print("BOT Suma de la mano (ajustada para juego y punto):", suma_mano)
+    #print("BOT Tiene pares:", pares)
+    #print("BOT Tiene medias duples:", medias_duples)
+    #print("BOT Tiene juego en [31, 32, 40]:", juego)
+   
+    #Quitar luego ahora es para probar descartes
+    #return 'Mus'
+
+    if mano_bot.count(12) + mano_bot.count(3) >= 2 and suma_mano >= 31:
         return 'Corto'
+
+    if juego or medias_duples:
+        print("BOT Decisión: Corto (tiene juego, pares o medias duples)")
+        return 'Corto'
+
+    if mano_bot.count(1) + mano_bot.count(2) >= 3:
+        return 'Corto'
+
+    print("BOT Decisión: Mus (intentar mejorar la mano)")
+    return 'Mus'
+
 
 def analizar_mano(mano):
     # Definir valores de cartas para grande y pares (R, 12 y 3 valen 12)
-    valores_grande_pares = {'3': 12, 'R': 12, '12': 12}
+    valores_grande_pares = {'3': 12, 'r': 12, '12': 12}
     valores_juego_punto = {
-        'A': 1, '2': 1, '3': 12, '4': 4, '5': 5, '6': 6, 
-        '7': 7, '8': 8, '9': 9, '10': 10, '11': 10, '12': 12, 'R': 12
+        '1': 1, '2': 1, '3': 12, '4': 4, '5': 5, '6': 6, 
+        '7': 7, '8': 8, '9': 9, '10': 10, '11': 10, '12': 12, 'r': 12
+    }
+
+    # Si la mano está vacía, devolver valores por defecto
+    if not mano:
+            return {
+                'quedarse': [],
+                'descartar': [],
+                'num_descartes': 0,
+                'cartasSeleccionadas': []
     }
 
     # Extraer solo los valores de la mano, ignorando los palos
     valores_mano = [carta[:-1] for carta in mano]
-    
+
     # Contar ocurrencias de valores en la mano
     conteo = {valor: valores_mano.count(valor) for valor in set(valores_mano)}
-    
-    # Estrategia 1: Buscar la combinación de Reyes (R) y Treses (3)
+
+    # Estrategia 1: Buscar combinación de Reyes ('12') y Treses ('3')
     quedarse = []
-    for valor in ['R', '3']:
+    for valor in ['12', '3']:
         if valor in conteo and conteo[valor] > 0:
             quedarse.extend([carta for carta in mano if carta.startswith(valor)])
-    
-    # Estrategia 2: Buscar pareja de Ases (A) o Doses (2)
-    if len(quedarse) == 0 and ('A' in conteo and conteo['A'] >= 2):
-        quedarse = [carta for carta in mano if carta.startswith('A')]
-    elif len(quedarse) == 0 and ('2' in conteo and conteo['2'] >= 2):
+
+    # Estrategia 2: Buscar pareja de Ases ('1') o Doses ('2')
+    if not quedarse and conteo.get('1', 0) >= 2:
+        quedarse = [carta for carta in mano if carta.startswith('1')]
+    elif not quedarse and conteo.get('2', 0) >= 2:
         quedarse = [carta for carta in mano if carta.startswith('2')]
 
-    # Si no hay buenas combinaciones, quedarse con las cartas más altas según valores de grande
-    if len(quedarse) == 0:
-        quedarse.append(max(mano, key=lambda carta: valores_grande_pares.get(carta[:-1], valores_juego_punto.get(carta[:-1], 0))))
+    # Estrategia 3: Buscar parejas o medias duples
+    if not quedarse:
+        parejas = [valor for valor, cantidad in conteo.items() if cantidad == 2]
+        if parejas:
+            quedarse = [carta for carta in mano if carta[:-1] in parejas]
+
+    # Estrategia 4: Si no hay combinaciones útiles, quedarse con las cartas más altas
+    if not quedarse:
+        quedarse.append(
+            max(mano, key=lambda carta: valores_grande_pares.get(carta[:-1], valores_juego_punto.get(carta[:-1], 0)))
+        )
 
     # Determinar las cartas a descartar
     descartes = [carta for carta in mano if carta not in quedarse]
-    
+
+    # Aseguramos que se descarta al menos una carta
+    if len(descartes) == 0 and len(mano) > 0:
+        # Sacamos una carta de quedarse y la agregamos a descartes
+        descartes.append(quedarse.pop())
+
     return {
         'quedarse': quedarse,
         'descartar': descartes,
-        'num_descartes': len(descartes)
+        'num_descartes': len(descartes),
+        'cartasSeleccionadas': descartes
     }
 
+import random
+
 def respuesta_bot(mesa):
-    estadobot = None
+
+    estadobot = 'conservador'
+    print("Jugador evaluado:", mesa['jugadores'][mesa['turno_actual']], " lance: ", mesa['lance_actual'])
+    #print("Valores de mesa: ", mesa)
 
     def modo_juego():
         nonlocal estadobot
         puntos_contrarios = mesa['puntos'][1] if mesa['jugadores'][0] in mesa['pareja_contraria'] else mesa['puntos'][0]
-        if 1 <= puntos_contrarios <= 30:
-            estadobot = 'conservador' if random.random() > 0.1 else 'agresivo'
+        if puntos_contrarios < 30:
+            estadobot = 'conservador' if random.random() > 0.2 else 'agresivo'
         else:
             estadobot = 'agresivo'
-        if puntos_contrarios >= 37:
-            estadobot = 'agresivo'
+
+        print("Puntos contrarios: ", puntos_contrarios, " estado_bot: ", estadobot)
+
+        mano_bot = evaluar_mano()
+
+        print ("Mano bot: ", mano_bot, " Mano bot set: ", set(mano_bot), "len mano bot: ", len(mano_bot), " Len mano bot set: ", len(set(mano_bot)))
+       # if len(set(mano_bot)) < len(mano_bot):  # Si tiene al menos una pareja
+       #     estadobot = 'agresivo'
 
     def evaluar_mano():
         mano_bot = mesa['manos'][mesa['jugadores'][mesa['turno_actual']]]
-        cartas = [int(carta[:-1]) for carta in mano_bot]
+        conversion_valores = {'3': 12, '2': 1, 'j': 10, 'q': 10, 'k': 10}
+        cartas = [conversion_valores.get(carta[:-1], int(carta[:-1])) for carta in mano_bot]
         return sorted(cartas, reverse=True)
 
     def decision_estandar():
         lance_actual = mesa['lance_actual']
-        acciones = mesa['acciones']
-        if acciones[mesa['lances'].index(lance_actual)] == 'Paso':
-            if lance_actual == 'Grande' and evaluar_mano().count(12) >= 2:
-                return 'Envido', 2
-            elif lance_actual == 'Chica' and evaluar_mano().count(1) >= 2:
-                return 'Envido', 2
-            elif lance_actual == 'Pares' and len(set(evaluar_mano())) < len(mesa['manos'][mesa['jugadores'][mesa['turno_actual']]]):
-                return 'Envido', 2
-            elif lance_actual == 'Juego' and sum(evaluar_mano()) == 31:
-                return ('Subo 5', 5) if mesa['turno_actual'] == mesa['mano'] else ('Envido', 2)
-            elif lance_actual == 'Punto' and sum(evaluar_mano()) in [29, 30]:
-                return ('Subo 5', 5) if mesa['turno_actual'] == mesa['mano'] else ('Envido', 2)
+        mano = evaluar_mano()
+
+        indice_lance_actual = mesa['lances'].index(mesa['lance_actual'])
+        apuesta = mesa['apuesta'][indice_lance_actual]
+
+        mano_para_juego = [10 if carta >= 10 else carta for carta in mano]
+        suma_mano = sum(mano_para_juego)
+        juego = suma_mano in [31, 32, 40]
+        # Detección corregida de pares y medias duples
+        pares = len(set(mano)) < len(mano)
+        pares_en_mano = [carta for carta in set(mano) if mano.count(carta) == 2]
+        medias_duples = len(pares_en_mano) >= 2 or any(mano.count(carta) == 3 for carta in mano)
+
+        # Resultados corregidos
+        print("BOT Suma de la mano (ajustada para juego y punto):", suma_mano)
+        print("BOT Tiene pares:", pares)
+        print("BOT Tiene medias duples:", medias_duples)
+        print("BOT Tiene juego en [31, 32, 40]:", juego)
+        print("Lance actual: ", lance_actual, "Accion: ", mesa['acciones'][mesa['lances'].index(lance_actual)])
+
+        if ('Órdago' in mesa['acciones'] or apuesta >= 40):  # Comprobamos si ya hay un órdago en la partida
+            print("BOT entra por órdago")
+            return ('Veo', 0) if puede_ver_ordago(mano) else ('Paso', 0)
+        # falta evaluar chica y punto
+        if mesa['acciones'][mesa['lances'].index(lance_actual)] == 'Paso':
+            
+            if lance_actual == 'Grande':
+                if mano.count(12) + mano.count(3) == 2:
+                    return 'Envido', 2            
+                elif mano.count(12) + mano.count(3) >= 3:
+                    return 'Envido', 5 
+                      
+            if lance_actual == 'Chica':
+                if mano.count(1) + mano.count(2) == 2:
+                    return 'Envido', 2
+                elif mano.count(1) + mano.count(2) >= 3:
+                    return 'Envido', 5
+
+            if lance_actual == 'Pares':
+                # Ajustamos los valores antes de contar pares y tríos
+                mano_ajustada = [12 if x == 3 else 1 if x == 2 else x for x in mano]
+                parejas = [x for x in set(mano_ajustada) if mano_ajustada.count(x) == 2]
+                trios = [x for x in set(mano_ajustada) if mano_ajustada.count(x) == 3]
+                cuarteto = any(mano_ajustada.count(x) == 4 for x in mano_ajustada)
+                print("BOT Tiene parejas:", parejas, " trios: ", trios, " cuarteto: ", cuarteto)
+                if cuarteto:
+                    return 'Órdago', 40
+                elif len(parejas) >= 2:
+                    return 'Envido', 5
+                elif trios:
+                    return 'Envido', 3
+                elif parejas:
+                    return 'Envido', 2
+                
+            if lance_actual == 'Juego':
+                if (suma_mano in [31]):
+                    return 'Envido', 5
+                elif (suma_mano in [32, 40]):
+                    return 'Envido', 2   
+                
+            if lance_actual == 'Punto':
+                if (suma_mano in [30]):
+                    return 'Envido', 4
+                elif (suma_mano in [28, 29]):
+                    return 'Envido', 2   
+                          
         return 'Paso', 0
 
     def decision_con_apuesta():
-        if mesa['accion'] == 'Órdago' or mesa['apuesta_actual'] > 12:
-            if mesa['lance_actual'] == 'Grande' and (evaluar_mano().count(12) >= 3 or (evaluar_mano().count(12) >= 2 and sum(mesa['puntos']) > 30)):
-                return 'Veo', 0
-            if mesa['lance_actual'] == 'Chica' and (evaluar_mano().count(1) >= 3 or (evaluar_mano().count(1) >= 2 and sum(mesa['puntos']) > 30)):
-                return 'Veo', 0
+        mano = evaluar_mano()
+        lance_actual = mesa['lance_actual']
+        
+        mano_para_juego = [10 if carta >= 10 else carta for carta in mano]
+        suma_mano = sum(mano_para_juego)
+        juego = suma_mano in [31, 32, 40]
+
+        indice_lance_actual = mesa['lances'].index(mesa['lance_actual'])
+        apuesta = mesa['apuesta'][indice_lance_actual]
+
+        print("BOT Respuesta. Mano bot con apuesta: ", mano, " apuesta en vuelo: ", apuesta)
+        print("BOT Respuesta. Lance actual con apuesta: ", lance_actual, " indice lance: ", indice_lance_actual, "Accion: ", mesa['acciones'][mesa['lances'].index(lance_actual)])
+        # 🚨 Si ya hay un órdago en juego, el bot solo puede aceptar o rechazar
+
+        if ('Órdago' in mesa['acciones'] or apuesta >= 40):   # Comprobamos si ya hay un órdago en la partida
+            #return ('Veo', 0) if puede_ver_ordago(mano) else ('Paso', 0)
+            if lance_actual == 'Grande':
+                if mano.count(12) + mano.count(3) >= 3:
+                   return 'Veo', 0
+            if lance_actual == 'Chica':
+                if mano.count(1) + mano.count(2) >= 3:
+                   return 'Veo', 0
+        else:
+            if lance_actual == 'Grande':
+                if mano.count(12) + mano.count(3) == 2:
+                    if  apuesta <= 6:
+                        return 'Veo', 0
+                elif mano.count(12) + mano.count(3) >= 3:
+                    if apuesta <= 6:
+                        return 'Veo', 0
+                    else:
+                        return 'Envido', 5 
+
+            if lance_actual == 'Chica':
+                if mano.count(1) + mano.count(2) == 2:
+                    return 'Veo', 0
+                elif mano.count(1) + mano.count(2) >= 3:
+                    return 'Envido', 5
+
+        if lance_actual == 'Pares':
+            # Ajustamos los valores antes de contar pares y tríos
+            mano_ajustada = [12 if x == 3 else 1 if x == 2 else x for x in mano]
+            parejas = [x for x in set(mano_ajustada) if mano_ajustada.count(x) == 2]
+            trios = [x for x in set(mano_ajustada) if mano_ajustada.count(x) == 3]
+            cuarteto = any(mano_ajustada.count(x) == 4 for x in mano_ajustada)
+
+            print("BOT con apuesta Tiene parejas:", parejas, " trios: ", trios, " cuarteto: ", cuarteto)
+            if cuarteto or len(parejas) >= 2:
+                if ('Órdago' in mesa['acciones'] or apuesta >= 40):  
+                    return 'Veo', 0
+                else:
+                    return 'Envido', 5
+            elif trios:
+                if ('Órdago' in mesa['acciones'] or apuesta >= 40):  
+                    return 'Veo', 0
+                elif apuesta <= 6:
+                    return 'Envido', 3
+                else:
+                    return 'Veo', 0                
+            elif parejas: #Aquiiiiii
+                if ('Órdago' in mesa['acciones'] or apuesta >= 40):  
+                    return 'Paso', 0
+                elif apuesta <= 6:
+                    return 'Envido', 3
+                else:
+                    return 'Veo', 0 
+               
+        if lance_actual == 'Juego':
+            if (suma_mano in [31]):
+                if ('Órdago' in mesa['acciones'] or apuesta >= 40):  
+                    return 'Veo', 0
+                elif apuesta <= 6:
+                    return 'Envido', 3
+                else:
+                    return 'Veo', 0  
+            if (suma_mano in [32, 40]):
+                if ('Órdago' in mesa['acciones'] or apuesta >= 40):  
+                    return 'Paso', 0
+                elif apuesta <= 6:
+                    return 'Veo', 0         
+                
+        if lance_actual == 'Punto':
+            if (suma_mano in [30]):
+                if ('Órdago' in mesa['acciones'] or apuesta >= 40):  
+                    return 'Veo', 0
+                elif apuesta <= 6:
+                    return 'Envido', 3
+                else:
+                    return 'Veo', 0    
+            if (suma_mano in [28, 29]):
+                if ('Órdago' in mesa['acciones'] or apuesta >= 40):  
+                    return 'Paso', 0
+                elif apuesta <= 6:
+                    return 'Veo', 0    
+                
         return 'Paso', 0
 
+    def puede_ver_ordago(mano):
+        print("BOT con apuesta puede ver ordago: ", mano.count(12), " sum(mano): ", sum(mano))
+        return mano.count(12) >= 3 or (mano.count(12) >= 2 and sum(mano) > 30)
+
     def decision_farol():
-        opciones = [('Paso', 0), ('Envido', random.choice([2, 5, 10])), (f'Subo {random.choice([2, 5, 10])}', random.choice([2, 5, 10])), ('Órdago', 40)]
-        return random.choice(opciones)
+        opciones = [
+            ('Paso', 0), 
+            ('Envido', random.choices([2, 5, 10], [0.6, 0.3, 0.1])[0])
+        ]
+        if ('Órdago' in mesa['acciones'] or apuesta >= 40):              
+            return ('Paso', 0)
+        else:
+            return random.choice(opciones)
 
     modo_juego()
-    decision, apuesta = decision_estandar() if mesa['apuesta_actual'] == 0 else decision_con_apuesta()
-    
-    if estadobot == 'agresivo':
-        if 'Subo' in decision:
-            nueva_apuesta = apuesta + random.choice([2, 5])
-            decision = f'Subo {nueva_apuesta}'
-            apuesta = nueva_apuesta
-        elif decision == 'Paso':
-            decision = 'Envido'
-            apuesta = 2
-    
-    if random.random() < 0.2:
-        decision, apuesta = decision_farol()
-    
-    return decision, apuesta
+    indice_lance_actual = mesa['lances'].index(mesa['lance_actual'])
+    apuestaEntrada = mesa['apuesta'][indice_lance_actual]
 
+    decision, apuesta = decision_estandar() if apuestaEntrada == 0 else decision_con_apuesta()
+    print("BOT modo juego decision: ", decision, " apuesta: ", apuesta)
+
+    if estadobot == 'agresivo' and decision == 'Paso':
+        if ('Órdago' in mesa['acciones'] or apuesta >= 40):  
+            decision = 'Paso'
+            apuesta = 0 
+        else:
+            if random.random() > 0.5:
+                decision = 'Envido'
+                apuesta += random.choice([2, 5])
+                print("BOT estadobot == 'agresivo' and decision == 'Paso' decision: Envido ", apuesta)
+                  
+    if random.random() < 0.2 and decision == 'Paso':
+        if ('Órdago' in mesa['acciones'] or apuesta >= 40):  
+            decision = 'Paso'
+            apuesta = 0 
+        else:
+            decision, apuesta = decision_farol()
+            print("BOT con apuesta decision farol: ", decision, " apuesta: ", apuesta)
+
+    return decision, apuesta
 
 ##############################################################################################
 
@@ -3086,6 +3698,12 @@ if __name__ == '__main__':
     print("🚀 Servidor corriendo en http://localhost:8000")
     socketio.run(app, host='0.0.0.0', port=8000, debug=True)
 
+'''
+if __name__ == '__main__':
+    print("🚀 Servidor corriendo en http://localhost:8000")
+    iniciarLimpiador()
+    socketio.run(app, host='0.0.0.0', port=8000, debug=True)
+'''
 #if __name__ == '__main__':
 #    socketio.run(app, host='0.0.0.0', port=8000)
 

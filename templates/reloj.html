@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Temporizador de Jugada</title>
+  <style>
+    /* Contenedor del temporizador */
+    .timer-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    /* Icono del relojito de arena con animación */
+    .hourglass {
+      font-size: 30px;
+      animation: giro 1s linear infinite;
+    }
+    @keyframes giro {
+      0%   { transform: rotate(0deg); }
+      50%  { transform: rotate(180deg); }
+      100% { transform: rotate(360deg); }
+    }
+    /* Estilo de la cuenta regresiva */
+    .countdown {
+      font-size: 30px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="timer-container">
+    <!-- Reloj visual -->
+    <div class="hourglass">⌛</div>
+    <!-- Contador de segundos -->
+    <div class="countdown" id="countdown">10</div>
+  </div>
+
+  <script>
+    // Tiempo límite en segundos
+    let tiempoLimite = 10;
+    const countdownEl = document.getElementById("countdown");
+    const hourglassEl = document.querySelector(".hourglass");
+
+    // Función que se ejecuta cada segundo para actualizar el contador
+    const timer = setInterval(() => {
+      tiempoLimite--;
+      countdownEl.textContent = tiempoLimite;
+
+      if (tiempoLimite <= 0) {
+        clearInterval(timer);
+        // Eliminamos tanto el reloj como el contador
+        hourglassEl.style.display = "none";
+        countdownEl.style.display = "none";
+        alert("Tiempo agotado. El bot hace su jugada.");
+        // Aquí podrías llamar a la función que maneje la jugada del bot.
+      }
+    }, 1000);
+  </script>
+</body>
+</html>

@@ -430,12 +430,13 @@
 				});
 			});
 		});
-	   
+	     
 	   
 		function iniciarJuego(boton) {
 			const mesaDiv = boton.closest('.mesa');
-			const tableId = mesaDiv.getAttribute('data-mesa-id');
-            socket.emit('iniciar_partida', { table_id: tableId });
+			const tableId = mesaDiv.getAttribute('data-mesa-id'); 
+			const admitirBots = document.getElementById('admitirBots').value === 'true';
+			socket.emit('iniciar_partida', { table_id: tableId });
 		}
 	
 		socket.on('partida_iniciada', (data) => {
@@ -534,8 +535,8 @@
 
         <label for="admitirBots">¿Permitir bots?</label>
         <select id="admitirBots">
-            <option value="true">Sí</option>
-            <option value="false" selected>No</option>
+            <option value="true" selected>Sí</option>
+            <option value="false">No</option>
         </select>
 
         <button onclick="aceptarConfiguracion()">Aceptar</button>
