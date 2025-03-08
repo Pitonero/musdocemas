@@ -1,5 +1,7 @@
 from gevent import monkey
 monkey.patch_all()
+#import eventlet
+#eventlet.monkey_patch()
 
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify, send_from_directory
 from flask_socketio import SocketIO, emit, join_room, leave_room, rooms
@@ -33,8 +35,8 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 Session(app)
-
-socketio = SocketIO(app, async_mode='eventlet')  # Usa eventlet
+#socketio = SocketIO(app, async_mode='eventlet')  # Usa eventlet
+socketio = SocketIO(app, async_mode='gevent')  # Usa eventlet
 
 # Lista para jugadores logados y mesas disponibles
 logged_players = []
