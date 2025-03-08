@@ -58,13 +58,13 @@ tables = {}
 salas = {}  # Diccionario para rastrear usuarios en cada sala
 table_counter = 1  # Contador global para las mesas
 
-'''
+
 @app.before_request
 def iniciar_hilo_limpiador_una_vez():
     if not hasattr(app, '_background_task_started'):
         app._background_task_started = True
         socketio.start_background_task(iniciarLimpiador)
-'''
+
 
 @app.route('/')
 def index():
@@ -252,11 +252,12 @@ def enviar_correo():
     except Exception as e:
         print(f"Error al enviar correo: {e}")
 
-    if session['usuario']:
+    usuario = session.get('usuario')
+    if usuario:        
         username = session['usuario']
         nombre = session['nombre']
         #avatar = 'img/avatar.png'
-        if session['usuario']:
+        if usuario:        
             return render_template('entrarajugar.html',usuario=username,nombre=nombre,avatar='img/avatar.png')
             #return render_template('entrarajugar.html',usuario=username,nombre=nombre,avatar=avatar)
     else:
@@ -821,7 +822,7 @@ def eliminarMesasInactivas():
     for mesa_id in list(tables.keys()):
         ultima_actividad = tables[mesa_id]["ultimaActividad"]
         print(f"Hora actual: {ahora} hora de la mesa: {ultima_actividad}")  
-        if ahora - ultima_actividad > 30:  #3600:   1 hora = 3600 s
+        if ahora - ultima_actividad > 1800:  #3600:   1 hora = 3600 s media hora 1800
             print(f"Eliminando la mesa inactiva: {mesa_id}")  
             del tables[mesa_id]
             leave_room(mesa_id)  
@@ -832,7 +833,7 @@ def iniciarLimpiador():
     def loop_limpieza():
         while True:
             eliminarMesasInactivas()
-            time.sleep(10) # elimina las mesas que no tengan actividad en una hora. Se ejecuta cada 10 minutos: 600 segundos
+            time.sleep(600) # elimina las mesas que no tengan actividad en una hora. Se ejecuta cada 10 minutos: 600 segundos
     
     t = threading.Thread(target=loop_limpieza, daemon=True)
     t.start()
