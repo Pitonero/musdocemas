@@ -1,7 +1,18 @@
-from gevent import monkey
-monkey.patch_all()
+#from gevent import monkey
+#monkey.patch_all()
+
 #import eventlet
 #eventlet.monkey_patch()
+
+import sys
+if sys.platform == 'win32':
+    from gevent import monkey
+    monkey.patch_all()
+    async_mode = 'gevent'
+else:
+    import eventlet
+    eventlet.monkey_patch()
+    async_mode = 'eventlet'
 
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify, send_from_directory
 from flask_socketio import SocketIO, emit, join_room, leave_room, rooms
@@ -35,8 +46,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 Session(app)
+socketio = SocketIO(app, async_mode=async_mode)
 #socketio = SocketIO(app, async_mode='eventlet')  # Usa eventlet
-socketio = SocketIO(app, async_mode='gevent')  # Usa eventlet
+#socketio = SocketIO(app, async_mode='gevent')  # Usa gevent
 
 # Lista para jugadores logados y mesas disponibles
 logged_players = []
