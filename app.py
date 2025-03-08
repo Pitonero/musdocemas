@@ -169,7 +169,9 @@ def logout2():
     print("Vamos a borrar la mesa de bosts activos: ", activos)
     if activos == 3:
         del tables[mesa_id]
-        leave_room(mesa_id)  
+        socket_sid = session.get('socket_sid')
+        if socket_sid:
+            leave_room(room=mesa_id, sid=socket_sid)
 
     return render_template('index.html')
 
@@ -514,7 +516,7 @@ def acceso():
             session['nombre'] = nombre
             session['avatar'] = avatar
             session['correo'] = correo        
-
+            
             if usuario and usuario not in logged_players:
                 logged_players.append(usuario)
 
@@ -545,6 +547,8 @@ def handle_join(data):
 @socketio.on('connect')
 def handle_connect():
     username = session.get('username')
+    session['socket_sid'] = request.sid 
+    print("SID guardado en sesión:", session['socket_sid'])
     #sid = request.sid
     #session_store[username] = sid
     #logged_players[sid] = {"nombre": None}  # Agrega cada cliente con un identificador único
@@ -692,7 +696,9 @@ def handle_salir_asiento(data):
         #tables[mesa_id] = mesa  # Guardar cambios
     print("Asiento en salir: ", asiento, "usuario: ", username)
     # Eliminar al cliente de la mesa
-    leave_room(mesa_id)    
+    socket_sid = session.get('socket_sid')
+    if socket_sid:
+        leave_room(room=mesa_id, sid=socket_sid)
     numeroMesa = int(mesa_id.split('_')[1]) 
     # (Opcional) Notificar a otros jugadores en la sala
     emit('chat_message', {'message': f"{username} se ha desconectado de la mesa {numeroMesa}.", 'username': 'Docemas'}, to=mesa_id)
@@ -708,8 +714,9 @@ def finalizar_partida(data):
     # Borramos la mesa de Tables:
     if mesa_id in tables:
         del tables[mesa_id]
-
-    leave_room(mesa_id)    
+    socket_sid = session.get('socket_sid')
+    if socket_sid:
+        leave_room(room=mesa_id, sid=socket_sid) 
     numeroMesa = int(mesa_id.split('_')[1]) 
     # (Opcional) Notificar a otros jugadores en la sala
 
@@ -825,7 +832,6 @@ def eliminarMesasInactivas():
         if ahora - ultima_actividad > 1800:  #3600:   1 hora = 3600 s media hora 1800
             print(f"Eliminando la mesa inactiva: {mesa_id}")  
             del tables[mesa_id]
-            leave_room(mesa_id)  
 
 def iniciarLimpiador():
     """Inicia un hilo que cada 60s llama a eliminarMesasInactivas."""
