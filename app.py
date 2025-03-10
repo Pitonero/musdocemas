@@ -781,6 +781,7 @@ def handle_create_table(data):
         "lance_actual": None,  # Lance activo: grande, chica, pares o juego
         "accion": None, # Paso, Veo, Envido, Órdago
         "acciones": [None, None, None, None, None], # última acción en cada lance
+        "pasado": [True,True,True,True,True] , # Indica si todos han pasado o no en cada lance        
         "apuesta": [0, 0, 0, 0, 0],
         "apuesta_actual": 0,
         "apuesta_anterior": 0,
@@ -823,7 +824,7 @@ def eliminarMesasInactivas():
     """Elimina las mesas sin actividad por más de 1 hora."""
     ahora = time.time()
     print(f"Hora actual: {ahora}")  
-    print("Mesa actual: ", tables)
+
     # Usamos list(...) para evitar error al modificar el dict mientras iteramos
 
     for mesa_id in list(tables.keys()):
@@ -831,10 +832,11 @@ def eliminarMesasInactivas():
         print(f"Hora actual: {ahora} hora de la mesa: {ultima_actividad}")  
         if ahora - ultima_actividad > 1800:  #3600:   1 hora = 3600 s media hora 1800
             print(f"Eliminando la mesa inactiva: {mesa_id}")  
+            print("Borramos la mesa: ", tables[mesa_id], " tiempo inactiva: ", ahora - ultima_actividad, " segundos")
             del tables[mesa_id]
 
 def iniciarLimpiador():
-    """Inicia un hilo que cada 60s llama a eliminarMesasInactivas."""
+    """Inicia un hilo que cada 600s llama a eliminarMesasInactivas."""
     print("LIMPIADOR iniciarLimpiador tables: ", tables)
     def loop_limpieza():
         while True:
@@ -1053,7 +1055,7 @@ def repartir_cartas(jugadores,baraja, num_cartas_por_jugador, descartes):
 
     # Si no hay suficientes cartas en la baraja, usar los descartes
     if len(baraja) < total_cartas_solicitadas:
-        print("No hay suficientes cartas en la baraja. Usando descartes.")
+        print("No hay suficientes cartas en la baraja. Usando descartes: ", descartes)
         baraja.extend(descartes)
         random.shuffle(baraja)
         descartes.clear()
@@ -2335,35 +2337,38 @@ def registrar_lance(mesa, ganador, lance, apuesta_actual, estado_apuesta, indice
         print("[DEBUG] Entra en registrar lance de {lance}. Jugador Apuesta: ", mesa['jugadorApuesta'], " pareja1: ", pareja1)
         apuesta_actual = 0
         mesa["apuesta"][indice_apuesta] = 0
+        mesa["pasado"][indice_apuesta] = False
         if mesa["jugadorApuesta"] in pareja1:
             # La pareja contraria es pareja1, sumamos punto en el índice 0
-            mesa["puntos"][0] = amarracos
+            mesa["puntos"][0] += amarracos
             emit('mensaje_mesa', {'msg': f"¡La pareja 1 gana 1 punto a {lance}!", 'username': mesa['lance_actual']}, to=mesa_id)
             if lance == "Grande":
-                mesa["grande"][0] = amarracos
+                mesa["grande"][0] += amarracos
+                print("SE INCREMENTA EN ", amarracos, " AMARRACOS LA GRANDE PARA EQUIPO 1.")
             elif lance == "Chica":
-                mesa["chica"][0] = amarracos
+                mesa["chica"][0] += amarracos
             elif lance == "Pares":
-                mesa["pares"][0] = amarracos
+                mesa["pares"][0] += amarracos
             elif lance == "Juego":
-                mesa["juego"][0] = amarracos
+                mesa["juego"][0] += amarracos
             elif lance == "Punto":
-                mesa["punto"][0] = amarracos                                
+                mesa["punto"][0] += amarracos                                
         #elif set(mesa["pareja_contraria"]) == set(pareja2):
         else:
             # La pareja contraria es pareja2, sumamos punto en el índice 0
-            mesa["puntos"][1] = amarracos
+            mesa["puntos"][1] += amarracos
             emit('mensaje_mesa', {'msg': f"¡La pareja 2 gana 1 punto a {lance}!", 'username': mesa['lance_actual']}, to=mesa_id)
             if lance == "Grande":
-                mesa["grande"][1] = amarracos
+                mesa["grande"][1] += amarracos
+                print("SE INCREMENTA EN ", amarracos, " AMARRACOS LA GRANDE PARA EQUIPO 2.")                
             elif lance == "Chica":
-                mesa["chica"][1] = amarracos
+                mesa["chica"][1] += amarracos
             elif lance == "Pares":
-                mesa["pares"][1] = amarracos
+                mesa["pares"][1] += amarracos
             elif lance == "Juego":
-                mesa["juego"][1] = amarracos
+                mesa["juego"][1] += amarracos
             elif lance == "Punto":
-                mesa["punto"][1] = amarracos  
+                mesa["punto"][1] += amarracos  
     
 
     print("[DEBUG] Entra en registrar lance. Valor de Puntos: ", mesa['puntos'])
@@ -2480,6 +2485,7 @@ def verificar_finaliza_juego_partida(mesa):
     mesa["pares"] = [0,0]    
     mesa["juego"] = [0,0]    
     mesa["punto"] = [0,0]  
+    mesa["pasado"] = [True,True,True,True,True] 
     # Validar si alguna pareja supera el valor de puntos_juego
     for equipo, puntos in enumerate(mesa["puntos"]):
         if puntos >= mesa['puntos_juego']:
@@ -2597,11 +2603,14 @@ def determinar_ganador_grande(mesa):
         #inicializar_mesa(mesa, mesa['nombre'])        
         return 
    
+
     # Caso 1: Todos pasan. Se asigna el punto de la grande en paso a la pareja ganadora
-    if mesa["acciones"][0] == "Paso" and mesa["apuesta"][0] == 0:
-        mesa["puntos"][equipo] += 1
-        mesa["grande"][equipo] += 1
-        print(f"[DEBUG] Grande: Todos pasaron. Punto sumado al equipo {equipo} ganado en paso.")
+    # Revisar pasado
+    if mesa["pasado"][0] == True:
+        if mesa["acciones"][0] == "Paso" and mesa["apuesta"][0] == 0:
+            mesa["puntos"][equipo] += 1
+            mesa["grande"][equipo] += 1
+            print(f"[DEBUG] Grande: Todos pasaron. Punto sumado al equipo {equipo} ganado en paso. mesa['grande']: {mesa['grande']}")
 
     # Caso 2: Nadie vio la apuesta. Se está tratando en tratar_lance en caliente
 
@@ -2668,7 +2677,7 @@ def determinar_ganador_chica(mesa):
 
     if mesa["apuesta"][1] >= mesa['puntos_juego']:  # Se valida el ganador si hay Órdago
         mesa["puntos"][equipo] += mesa['puntos_juego']
-        mesa["grande"][equipo] += mesa['puntos_juego']
+        mesa["chica"][equipo] += mesa['puntos_juego']
         # Emitir actualizar_interfaz_ronda
         emitir_actualizar_interfaz(mesa)        
         verificar_finaliza_juego_partida(mesa)
@@ -2676,10 +2685,12 @@ def determinar_ganador_chica(mesa):
         return 
 
     # Caso 1: Todos pasan. Se asigna el punto de la chica en paso a la pareja ganadora
-    if mesa["acciones"][1] == "Paso" and mesa["apuesta"][1] == 0:
-        mesa["puntos"][equipo] += 1
-        mesa["chica"][equipo] += 1
-        print(f"[DEBUG] Chica: Todos pasaron. Punto sumado en paso al equipo {equipo}.")
+    # Esto ya se está sumando en registrar_lance
+    if mesa["pasado"][1] == True:
+        if (mesa["acciones"][1] == "Paso" and mesa["apuesta"][1] == 0):
+            mesa["puntos"][equipo] += 1
+            mesa["chica"][equipo] += 1
+            print(f"[DEBUG] Chica: Todos pasaron. Punto sumado en paso al equipo {equipo}. mesa['chica'] {mesa['chica']}")
 
     # Caso 2: Nadie vio la apuesta. se gestiona en tratar_lance
 
@@ -2688,7 +2699,7 @@ def determinar_ganador_chica(mesa):
         # Sumar los puntos apostados al equipo ganador
         puntos_apuesta = mesa["apuesta"][1]  # Recuperar el valor de la apuesta y lo suma al ganador
         mesa["puntos"][equipo] += puntos_apuesta
-        mesa["grande"][equipo] += puntos_apuesta        
+        mesa["chica"][equipo] += puntos_apuesta        
         print(f"[DEBUG] Chica: Apuesta vista: {puntos_apuesta} puntos sumados al equipo {equipo}.")
 
     return ganador
@@ -2792,7 +2803,7 @@ def determinar_ganador_pares(mesa):
 
     if mesa["apuesta"][2] >= mesa['puntos_juego']:  # Se valida el ganador si hay Órdago
         mesa["puntos"][equipo] += mesa['puntos_juego']
-        mesa["grande"][equipo] += mesa['puntos_juego']
+        mesa["pares"][equipo] += mesa['puntos_juego']
         # Emitir actualizar_interfaz_ronda
         emitir_actualizar_interfaz(mesa)
         verificar_finaliza_juego_partida(mesa)
@@ -2897,7 +2908,7 @@ def determinar_ganador_juego(mesa):
 
     if mesa["apuesta"][3] >= mesa['puntos_juego']:  # Se valida el ganador si hay Órdago
         mesa["puntos"][equipo] += mesa['puntos_juego']
-        mesa["grande"][equipo] += mesa['puntos_juego']
+        mesa["juego"][equipo] += mesa['puntos_juego']
         # Emitir actualizar_interfaz_ronda
         emitir_actualizar_interfaz(mesa)
         verificar_finaliza_juego_partida(mesa)
@@ -2992,7 +3003,7 @@ def determinar_ganador_punto(mesa):
 
     if mesa["apuesta"][4] >= mesa['puntos_juego']:  # Se valida el ganador si hay Órdago
         mesa["puntos"][equipo] += mesa['puntos_juego']
-        mesa["grande"][equipo] += mesa['puntos_juego']
+        mesa["punto"][equipo] += mesa['puntos_juego']
         # Emitir actualizar_interfaz_ronda
         emitir_actualizar_interfaz(mesa)
         verificar_finaliza_juego_partida(mesa)
@@ -3000,10 +3011,12 @@ def determinar_ganador_punto(mesa):
         return 
 
     # Caso 1: Todos pasan. Se asigna el punto del Punto en paso a la pareja ganadora
-    if mesa["acciones"][4] == "Paso" and mesa["apuesta"][4] == 0:
-        mesa["puntos"][equipo] += 1
-        mesa["punto"][equipo] += 1
-        print(f"[DEBUG] Punto: Todos pasaron. Punto sumado en paso al equipo {equipo}.")
+    # Esto ya se está sumando en registrar_lance?
+    if mesa["pasado"][4] == True:   
+        if mesa["acciones"][4] == "Paso" and mesa["apuesta"][4] == 0:
+            mesa["puntos"][equipo] += 1
+            mesa["punto"][equipo] += 1
+            print(f"[DEBUG] Punto: Todos pasaron. Punto sumado en paso al equipo {equipo}. mesa['puntos']: {mesa['puntos']}")
     
     # Caso 2: Nadie vio la apuesta. se gestiona el punto del miedo en tratar_lance
 

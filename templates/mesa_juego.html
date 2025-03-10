@@ -543,8 +543,8 @@ header h1 .usuario {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px; /* Mayor espacio entre los botones principales */
-  margin-top: 20px; /* Espaciado superior */
+  gap: 10px; /* Mayor espacio entre los botones principales min-height: 70px; */
+  margin-top: 0px; /* Espaciado superior */
 }
 
 .fila {
@@ -1178,7 +1178,7 @@ button:active {
 		
 		document.addEventListener("DOMContentLoaded", () => {
 			const mesa = {{ mesa|tojson }}; // Datos de la mesa desde el servidor
-
+			ocultarMesaBotones();
 		// Lógica para saber si un jugador se ha reconectado:	
 			//const accion = mesa.accion;
 			//if ((mesa.puntos[0] == 0) && (mesa.puntos[1] == 0) && (mesa.juegos[0] == 0) && (mesa.juegos[1] == 0)) {
@@ -1220,6 +1220,15 @@ button:active {
 					}
 				}	
 			} */
+		});
+
+
+		document.addEventListener('keydown', function(event) {
+		  // Comprobamos si se pulsa F5
+		  if (event.key === 'F5' || event.keyCode === 116) {
+			event.preventDefault(); // Prevenir la recarga de la página
+			alert("Presionar F5 interrumpirá el juego. No se recargará la página.");
+		  }
 		});
 		
 		//Refrescar la mesa:
@@ -2412,7 +2421,7 @@ button:active {
 		let apuestaLance = apuesta;
 		let hablar = accion; 
 		let hablar2 = "envida";
-		console.log("Estado actualizado turno actual:", turnoActual, " turnoJugador: ", turnoJugador, " jugAnterior: " + jugadorAnterior, " jugadorCliente: ", jugadorActual);		
+		console.log("Estado actualizado turno actual:", turnoActual, " turnoJugador: ", turnoJugador, " jugAnterior: " + jugadorAnterior, " jugadorCliente: ", jugadorActual, " accion: ", accion);		
 		// Inicializamos con 2 el valor de envido.	
 		let valorEnvido = 2;
 		const spanEnvido = document.getElementById('valor-envido');
@@ -2435,19 +2444,20 @@ button:active {
 			hablar = apuestaActual + " más y van " + apuesta; 
 			hablar2 = "envida " + apuestaActual + " más y van " + apuesta; 
 		}  
-		if (accion === "Veo") {
-			hablar2 = " ve la apuesta";
-		}
-		if (accion === "Paso") {
-			hablar2 = " pasa";
-		}		 
-		
 		if (apuesta >= 40) {
 			mensaje = jugadorAnterior + " lanza un ÓRDAGO";
 			hablar = "¡¡¡ÓRDAGO!!!";
 		} else {
 			mensaje = jugadorAnterior + " " + hablar2;
 		}
+		if (accion === "Veo") {
+			hablar2 = " ve la apuesta";
+			hablar = accion;
+		}
+		if (accion === "Paso") {
+			hablar2 = " pasa";
+			hablar = accion;			
+		}		
 		mostrarAccion(mensaje);
  		
 		//console.log("Accion: ", accion, "Lance: ", lanceActual, " habla ", jugadorAnterior, " y dice: ", hablar);
@@ -2529,7 +2539,7 @@ button:active {
 		
 		// Actualizar el texto del lance
 		const textoLance = document.getElementById('texto-lance');
-		textoLance.textContent = lance;
+		textoLance.textContent = "Pares";
 		
 		//console.log("Pares confirmados: Puntos: ", data.puntos);
 		// Actualizar marcador
@@ -2739,18 +2749,18 @@ button:active {
 						accion = "juego";
 					}
 					// Establecer el mensaje
-					const mensajeCentral = `¡La pareja<br>${pareja1L}<br>gana el ${accion}!`;	
-					if (equipo === 1) {
-						const mensajeCentral = `¡La pareja<br>${pareja2L}<br>gana el ${accion}!`;				
-					}
-	
+					//const mensajeCentral = `¡La pareja<br>${pareja1L}<br>gana el ${accion}!`;	
+					//if (equipo === 1) {
+					//	const mensajeCentral = `¡La pareja<br>${pareja2L}<br>gana el ${accion}!`;				
+					//}
+					const mensajeCentral = `¡La pareja ${equipo + 1} gana el ${accion}!`;
 					// Sumar 1 al juego correspondiente
 					data.juegos[equipo] += 1;
 					data.puntos[0] = 0;
 					data.puntos[1] = 0;		
 					mesa.puntos[0] = 0;
 					mesa.puntos[1] = 0;					
-					console.log("BOCADILLO JUEGO GANA el juego ", equipo, " juegos parametro: ", juegos_vaca, " juegos ganados: ", data.juegos[equipo]);
+					console.log("BOCADILLO JUEGO GANA el juego equipo: ", equipo, " juegos parametro: ", juegos_vaca, " juegos ganados: ", data.juegos[equipo]);
 					// Actualizar los juegos en el marcador
 					document.getElementById('puntos-pareja1').textContent = data.puntos[0];
 					document.getElementById('puntos-pareja2').textContent = data.puntos[1];				
@@ -2763,6 +2773,7 @@ button:active {
 					if (data.juegos[equipo] === juegos_vaca) {  
 						mostrarPopup(mesa_id, mensajeCentral);
 					} else {
+						//alert("Entra a mostrarBocadilloCentral");
 						mostrarBocadilloCentral(mensajeCentral, 0); // Mostrar por 4 segundos
 					}
 				}

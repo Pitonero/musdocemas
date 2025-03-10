@@ -735,6 +735,17 @@ button:active {
   display: none;
 }
 
+.bocadillo-puntos tbody tr:nth-child(1) {
+    background-color: blue;
+    color: white; /* Opcional: para que el texto se vea bien */
+}
+
+.bocadillo-puntos tbody tr:nth-child(2) {
+    background-color: red;
+    color: white;
+}
+
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -905,7 +916,7 @@ button:active {
 }
 
 /* Si el mensaje pertenece al jugador principal, lo mostramos a la derecha */
-.jugador-principal .mensaje-jugador {
+.jugador-1 .mensaje-jugador {
     top: 50%; /* Centra el mensaje verticalmente */
     left: 100%; /* Lo posiciona a la derecha del avatar */
     transform: translateY(-50%); /* Ajusta la posición para que esté alineado */
@@ -913,6 +924,31 @@ button:active {
     width: auto;
     max-width: 200px; /* Evita que sea demasiado ancho */
 }
+
+        /* ----- NUEVO: Estilos para el temporizador ----- */
+        .timer-container {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-family: Arial, sans-serif;
+        }
+        /* Oculto por defecto */
+        .timer-container.oculto {
+            display: none;
+        }
+        .hourglass {
+            font-size: 20px;
+            animation: giro 1s linear infinite;
+        }
+        @keyframes giro {
+            0%   { transform: rotate(0deg); }
+            50%  { transform: rotate(180deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .countdown {
+            font-size: 20px;
+            font-weight: bold;
+        }
 
 
 
@@ -935,6 +971,7 @@ button:active {
     <!-- Contenedor Principal -->
     <div class="contenedor">
         <!-- Mesa de Juego -->
+
         <div class="mesa-de-juego">
         <!-- Tablero de Puntuación -->
         <p></p>
@@ -965,6 +1002,11 @@ button:active {
 			<div class="jugador jugador-1">
 				<img src="" alt="Avatar Jugador 1">
 				<span class="alias"></span> 
+				<!-- Temporizador: Se mostrará cuando sea su turno -->
+                <div class="timer-container oculto" id="timer-1">
+                    <div class="hourglass">⌛</div>
+                    <div class="countdown" id="countdown-1">10</div>
+                </div>
 				<div class="jugador-principal" id="mensaje-jugador-0"></div>
 				<div class="bocadillo"></div>
 				<div class="cartas">
@@ -977,6 +1019,11 @@ button:active {
 			<div class="jugador jugador-2">
 				<img src="" alt="Avatar Jugador 2">
 				<span class="alias"></span>
+                <!-- Temporizador para jugador 2 -->
+                <div class="timer-container oculto" id="timer-2">
+                    <div class="hourglass">⌛</div>
+                    <div class="countdown" id="countdown-2">10</div>
+                </div>
 				<div class="mensaje-jugador" id="mensaje-jugador-1"></div>
 				<div class="bocadillo"></div>
 				<div class="cartas">
@@ -1051,6 +1098,11 @@ button:active {
 			<div class="jugador jugador-3">
 				<img src="" alt="Avatar Jugador 3">
 				<span class="alias"></span>
+                <!-- Temporizador para jugador 3 -->
+                <div class="timer-container oculto" id="timer-3">
+                    <div class="hourglass">⌛</div>
+                    <div class="countdown" id="countdown-3">10</div>
+                </div>
 				<div class="mensaje-jugador" id="mensaje-jugador-2"></div>
 				<div class="bocadillo"></div>
 				<div class="cartas">
@@ -1063,6 +1115,11 @@ button:active {
 			<div class="jugador jugador-4">
 				<img src="" alt="Avatar Jugador 4">
 				<span class="alias"></span>
+                <!-- Temporizador para jugador 4 -->
+                <div class="timer-container oculto" id="timer-4">
+                    <div class="hourglass">⌛</div>
+                    <div class="countdown" id="countdown-4">10</div>
+                </div>
 				<div class="mensaje-jugador" id="mensaje-jugador-3"></div>
 				<div class="bocadillo"></div>
 				<div class="cartas">
@@ -1163,6 +1220,15 @@ button:active {
 					}
 				}	
 			} */
+		});
+
+
+		document.addEventListener('keydown', function(event) {
+		  // Comprobamos si se pulsa F5
+		  if (event.key === 'F5' || event.keyCode === 116) {
+			event.preventDefault(); // Prevenir la recarga de la página
+			alert("Presionar F5 interrumpirá el juego. No se recargará la página.");
+		  }
 		});
 		
 		//Refrescar la mesa:
@@ -1291,7 +1357,34 @@ button:active {
 			console.log(`Cartas repartidas al usuario ${usuario}:`, cartasJugador);
 		}
 
-
+		  /**
+		   * Inicia el temporizador para un jugador.
+		   * @param {string} timerId - El ID del contenedor del timer.
+		   * @param {string} countdownId - El ID del elemento donde se muestra el tiempo.
+		   * @param {number} duration - Duración en segundos.
+		   * se llama con por ejemplo al jugador 2 startTimer("timer-2", "countdown-2", 10)
+		   */ 
+		function startTimer(timerId, countdownId, duration) {
+			 var timerContainer = document.getElementById(timerId);
+			 var countdownEl = document.getElementById(countdownId);
+			 var timeLeft = duration;
+			  // Mostrar el timer
+			 timerContainer.classList.remove('oculto');
+			 countdownEl.textContent = timeLeft;
+			  
+			 var timerInterval = setInterval(function() {
+				 timeLeft--;
+				 countdownEl.textContent = timeLeft;
+				 if (timeLeft <= 0) {
+					clearInterval(timerInterval);
+					// Ocultar el timer al agotarse el tiempo
+					 timerContainer.classList.add('oculto');
+					 // Aquí puedes llamar a la función para la jugada automática del bot
+					 alert("Tiempo agotado. El bot hace su jugada.");
+				}
+			}, 1000);
+		}
+		
 		function mostrarBocadillo(jugadorElement, mensaje) {
 			//alert("Entra en mostrar bocadillo. ");
 			const bocadillo = jugadorElement.querySelector(".bocadillo");
@@ -1421,6 +1514,7 @@ button:active {
 		//==========================================================================================
 		function repartirCartas() {
 			const mesaId = "{{ mesa.nombre }}"; // Obtenemos el ID de la mesa desde la plantilla
+			limpiarHablado();
 			socket.emit('repartir_cartas', { mesa_id: mesaId });
 			const mano = mesa.mano;
 			const valor = (mano - 1 + 4) % 4;
@@ -1503,8 +1597,8 @@ button:active {
 						if (jugador === "{{ usuario }}") {
 							rutaImagen = `../static/img/cartas/${carta}.png`; // Mostrar la carta real
 						} else {
-							rutaImagen = `../static/img/cartas/${carta}.png`; // Mostrar la carta real
-							//rutaImagen = `../static/img/cartas/zz.png`; // Mostrar la carta bocabajo
+							//rutaImagen = `../static/img/cartas/${carta}.png`; // Mostrar la carta real
+							rutaImagen = `../static/img/cartas/zz.png`; // Mostrar la carta bocabajo
 						}
 
 						// Crear la ruta de la imagen
@@ -1653,6 +1747,7 @@ button:active {
 				//limpiarHablado();
 				const turnoJugadorIdx = reorganizedJugadores.findIndex(jugador => jugador === jugadorActual);	
 				console.log("Jugador turno es: ", jugadorActual, " indice reorganiced es: ", turnoJugadorIdx);
+				mostrarHablado(turnoJugadorIdx, "Mus");
 				resaltarManoDescarte(turnoJugadorIdx);
 				ocultarBotones();
 				console.log ("BOT actualizar_mus. Contador = 4. Va a llamar a tratar_descartar con jugador: " + jugadorActual);				
@@ -2007,7 +2102,8 @@ button:active {
 			//turnoLabel.classList.remove("oculto"); 
 			botonesJuego.style.display = 'flex'; // Mostrar los botones de MUS y Corto
 			//turnoLabel.textContent = `Turno ${jugadorActual}`; // Mostrar etiqueta con el jugador en turno
-			mostrarTurno(jugadorActual);
+			const indiceJugador = jugadores.indexOf(jugadorActual) + 1;
+			mostrarTurno(jugadorActual, indiceJugador);
 			// Activar los botones de Mus y Corto solo para el usuario del turno
 			btnCorto.disabled = true;
 			btnMus.disabled = true;
@@ -2079,10 +2175,14 @@ button:active {
 	// CODIGO PARA LA GESTION DE LOS TURNOS Y ACTIVACIÓN Y DESACTIVACION DE BOTONES
 	
     // Mostrar notificación de turno con intervalo de tres segundos
-    function mostrarTurno(jugador) {
+    function mostrarTurno(jugador, idxJugador) {
 		const turnoNotificacion = document.getElementById("turnoNotificacion");
  		turnoNotificacion.textContent = `Es el turno de ${jugador}`;
 		turnoNotificacion.classList.remove("oculto");
+		//const timer = `timer-${idxJugador}`;
+		//const contfin = `countdown-${idxJugador}`;
+		//alert("Timer: " + timer + " countdown: " + contfin);
+		//startTimer(timer, contfin, 10);
 
       // Ocultar la notificación después de 3 segundos
     //  setTimeout(() => {
@@ -2108,7 +2208,11 @@ button:active {
 		turnoNotificacion.classList.remove("oculto");
 		const mePido = "Quiero " + num_cartas + cartulaje;
 		//mostrarBocadillo2(turnoJugadorIdx, mePido);
-		mostrarHablado(turnoJugadorIdx, mePido);
+		if (cartulaje === "Mus") {
+			mostrarHablado(turnoJugadorIdx, cartulaje);
+		} else {
+			mostrarHablado(turnoJugadorIdx, mePido);
+		}
 		//alert("mostrarMensaje. Jugador: " + jugadorDescarta + " dice: " + mePido);
 		console.log("mostrarMensaje. Jugador: ", jugadorDescarta, " dice: ", mePido);
 		//if (jugadorDescarta !== usuario ) {
@@ -2194,7 +2298,7 @@ button:active {
 		const bot = data.bot;
 		const owner = data.owner;
 		
-		mostrarTurno(jugadorTurno);
+		mostrarTurno(jugadorTurno, indiceMano+1);
 		console.log('COMENZAR RONDA: jugadorTurno desde servidor:', jugadorTurno, " jugador cliente: ", "{{ usuario }}");
 		ocultarBotones();
 		const manoJugadorIdx = reorganizedJugadores.findIndex(jugador => jugador === jugadorTurno);	
@@ -2268,7 +2372,6 @@ button:active {
 			console.log(`${jugadorC} lanza un órdago.`);
 			enviarAccion(jugadorC, "Órdago");
 		});
-
 		// Botón de Ver
 		document.getElementById('ver').addEventListener('click', () => {
 		    //alert('Has visto el envido.');
@@ -2341,18 +2444,18 @@ button:active {
 			hablar = apuestaActual + " más y van " + apuesta; 
 			hablar2 = "envida " + apuestaActual + " más y van " + apuesta; 
 		}  
-		if (accion === "Veo") {
-			hablar2 = " ve la apuesta";
-		}
 		if (accion === "Paso") {
 			hablar2 = " pasa";
-		}		 
-		
+		}
 		if (apuesta >= 40) {
 			mensaje = jugadorAnterior + " lanza un ÓRDAGO";
 			hablar = "¡¡¡ÓRDAGO!!!";
 		} else {
 			mensaje = jugadorAnterior + " " + hablar2;
+		}
+		if (accion === "Veo") {
+			hablar2 = " ve la apuesta";
+			hablar = accion;
 		}
 		mostrarAccion(mensaje);
  		
@@ -2380,7 +2483,7 @@ button:active {
 		const textoLance = document.getElementById('texto-lance');
 		textoLance.textContent = lanceActual;
 		
-		mostrarTurno(turnoJugador);
+		mostrarTurno(turnoJugador, turnoActual+1);
 		
 		let llamar_bot = true;
 		if (mesa.lance_actual === 'Pares') {
@@ -2426,10 +2529,12 @@ button:active {
 		const owner = data.owner;
 		const finRonda = data.fin_ronda;
 		const estadoPartida = data.estado_partida;
+		const mano = data.mano;
 		const mesaId = "{{ mesa.nombre }}";
 		console.log("Resultados de pares recibidos:", resultados, " lance: ", lance, " total_pares: ", total_pares, " turno_actual: ", turno_actual, " parejas contrarias: ", contrarias);
 		const jugadorActual = "{{ usuario }}";
 		const turnoJugador = jugadores[turno_actual];
+		const turnoMano = jugadores[mano];
 		
 		// Actualizar el texto del lance
 		const textoLance = document.getElementById('texto-lance');
@@ -2464,32 +2569,25 @@ button:active {
 				}, 1000);
 			});
 		};
-		/* // Mostrar la información de quienes tienen pares o no en la interfaz, uno por uno
-		for (const [jugadorP, tienePares] of Object.entries(resultados)) {
-			const manoJugadorIdx = reorganizedJugadores.findIndex(jugador => jugador === jugadorP);
-			//const manoJugadorIdx = jugadores.indexOf(jugadorAcutal);
-			await mostrarConEspera(jugadorP, tienePares, manoJugadorIdx);
-		} */
-		console.log("Reorganized jugadores: ", reorganizedJugadores, " turno jugador: ", turnoJugador);
-		
-		//let jugadorP = turnoJugador;
-		// Iterar sobre el arreglo reorganizedJugadores que ya tiene el orden correcto
-		for (const jugadorP of reorganizedJugadores) {
-		  const tienePares = resultados[jugadorP]; // Obtener el valor de pares para el jugador actual
-		  const manoJugadorIdx = reorganizedJugadores.indexOf(jugadorP); // Su índice en el arreglo
-		  await mostrarConEspera(jugadorP, tienePares, manoJugadorIdx);
+
+		const startIndex = reorganizedJugadores.indexOf(turnoMano);
+		const n = reorganizedJugadores.length;
+
+		if (startIndex === -1) {
+		  console.error("El turnoMano no se encuentra en reorganizedJugadores.");
+		} else {
+		  for (let i = 0; i < n; i++) {
+			// currentIndex avanza cíclicamente
+			const currentIndex = (startIndex + i) % n;
+			const jugadorP = reorganizedJugadores[currentIndex];
+			const tienePares = resultados[jugadorP];
+			console.log("Iterando con jugador:", jugadorP, " tienepares: ", tienePares, " currentIdenx: ", currentIndex);
+			// Aquí, ojo si la lógica de mostrarHablado requiere que el índice sea "i" o "currentIndex"
+			await mostrarConEspera(jugadorP, tienePares, currentIndex);
+		  }
 		}
 
-		// Procesar el resultado después de que todos los bocadillos se han mostrado
-		/*if (total_pares === 0) {
-			const mensajeCentral = "Ningún jugador tiene<br>pares. Pasamos al juego.";
-			mostrarBocadilloCentral(mensajeCentral, 0);
-		}
-		if (total_pares === 1) {
-			const mensajeCentral = "Solo un jugador tiene<br>pares. Pasamos al juego.";
-			mostrarBocadilloCentral(mensajeCentral, 0);
-		}*/
-		console.log("BOT pares_confirmados. fin roda: ", finRonda, " estado_partida: ", estadoPartida);
+		console.log("BOT pares_confirmados. fin ronda: ", finRonda, " estado_partida: ", estadoPartida);
 		 if ((total_pares > 2) || (total_pares === 2 && contrarias)) {
 			if (finRonda === false) {
 				if ((bot === true) && (owner === jugadorActual) && estadoPartida === 'Jugar') {
@@ -2501,7 +2599,7 @@ button:active {
 		// En el caso de que al menos haya dos jugadores contrarios con pares, comienza el lance
 		if ((total_pares > 2) || (total_pares === 2 && contrarias)) {
 		  console.log("Hay partida de pares ");
-		  mostrarTurno(turnoJugador);
+		  mostrarTurno(turnoJugador, turno_actual+1);
 		  // Si le toca al bot decide el servidor. Solo llama el owner de la mesa para que sea una vez.
 		  // Mostrar/ocultar botones según el turno
 		  if (turnoJugador === jugadorActual) {
@@ -2522,7 +2620,9 @@ button:active {
 		const bot = resultados.bot;
 		const owner = resultados.owner;
 		const finRonda = resultados.fin_ronda;
-		const estadoPartida = resultados.estado_partida;		
+		const estadoPartida = resultados.estado_partida;
+		const mano = resultados.mano;		
+		const turnoMano = jugadores[mano];
 		console.log("Resultados de juego recibidos:", resultados, " turnoJugador: ", turnoJugador, " turno_actual: ", turno_actual, " contrarias: ", contrarias);
 
 		// Actualizar el texto del lance en la interfaz
@@ -2554,57 +2654,31 @@ button:active {
 
 		// Encontramos el índice donde se encuentra el jugador que es mano
 		const startingIndex = resultados.resultado_juego.findIndex(
-		  infoJuego => infoJuego.jugador === turnoJugador
+		  infoJuego => infoJuego.jugador === turnoMano
 		);
 
 		if (startingIndex === -1) {
-		  console.error(`El jugador ${turnoJugador} no se encontró en estado_juego.`);
+		  console.error(`El jugador ${turnoMano} no se encontró en estado_juego.`);
 		} else {
-		  // Creamos un nuevo array ordenado cíclicamente, iniciando por el turnoJugador
-		  const resultadosOrdenados = [
-			...resultados.resultado_juego.slice(startingIndex),
-			...resultados.resultado_juego.slice(0, startingIndex)
-		  ];
-
-		  // Iteramos sobre el array reordenado
-		  for (const infoJuego of resultadosOrdenados) {
+		  const totalJugadores = resultados.resultado_juego.length;
+		  // Iteramos usando un índice que rota cíclicamente
+		  for (let i = 0; i < totalJugadores; i++) {
+			const currentIndex = (startingIndex + i) % totalJugadores;
+			const infoJuego = resultados.resultado_juego[currentIndex];
+			
 			// Busca el índice del jugador en reorganizedJugadores
 			const manoJugadorIdx = reorganizedJugadores.findIndex(jugador => jugador === infoJuego.jugador);
 			if (manoJugadorIdx === -1) {
 			  console.error(`Jugador ${infoJuego.jugador} no encontrado en reorganizedJugadores.`);
 			  continue; // Salta al siguiente jugador si no encuentra el índice
 			}
-			console.log("juego_confirmado. Jugador: ", infoJuego.jugador, " manoJugadorIdx: ", manoJugadorIdx);
+			
+			console.log("juego_confirmado. Jugador:", infoJuego.jugador, "manoJugadorIdx:", manoJugadorIdx);
 			// Espera a que se muestre el resultado de este jugador
 			await mostrarJuegoConEspera(infoJuego, manoJugadorIdx);
 		  }
 		}
 
-
-
-	 /*	// Mostrar los resultados uno por uno aquiiiiiii
-		for (const infoJuego of resultados.resultado_juego) {
-			// Busca el índice del jugador en reorganizedJugadores
-			const manoJugadorIdx = reorganizedJugadores.findIndex(jugador => jugador === infoJuego.jugador);
-			//const manoJugadorIdx = jugadores.indexOf(jugadorAcutal);
-			if (manoJugadorIdx === -1) {
-				console.error(`Jugador ${infoJuego.jugador} no encontrado en reorganizedJugadores.`);
-				continue; // Salta al siguiente jugador si no encuentra el índice
-			}
-			console.log("juego_confirmado. Jugador: ", infoJuego.jugador, " manoJugadorIdx: ", manoJugadorIdx);
-			// Espera a que se muestre el resultado de este jugador
-			await mostrarJuegoConEspera(infoJuego, manoJugadorIdx);
-		}  */
-
-		// Procesar el resultado después de mostrar todos los bocadillos
-		/*if (total_juego === 0) {
-			const mensajeCentral = "Ningún jugador tiene<br>juego. Pasamos al Punto.";
-			mostrarBocadilloCentral(mensajeCentral, 0);
-		}
-		if (total_juego === 1) {
-			const mensajeCentral = "Solo un jugador<br>tiene juego.";
-			mostrarBocadilloCentral(mensajeCentral, 0);
-		}*/
 		console.log("BOT juego_confirmado. fin roda: ", finRonda, " con juego: ", total_juego, " parejas contrarias: ", contrarias);
 		if ((total_juego > 2) || (total_juego === 2 && contrarias)) {
 			if (finRonda === false) {
@@ -2619,7 +2693,7 @@ button:active {
 		// En el caso de que al menos haya dos jugadores contrarios con juego, comienza el lance
 		if ((total_juego > 2) || (total_juego === 2 && contrarias)) {
 		  console.log("Hay partida de juego ");
-		  mostrarTurno(turnoJugador);
+		  mostrarTurno(turnoJugador, turno_actual+1);
 		  // Mostrar/ocultar botones según el turno
 		  if (turnoJugador === jugadorActual) {
 			mostrarMesaBotones(0);
@@ -2675,17 +2749,17 @@ button:active {
 					}
 					// Establecer el mensaje
 					const mensajeCentral = `¡La pareja<br>${pareja1L}<br>gana el ${accion}!`;	
-					if (equipo == 1) {
+					if (equipo === 1) {
 						const mensajeCentral = `¡La pareja<br>${pareja2L}<br>gana el ${accion}!`;				
 					}
-					//const mensajeCentral = `¡La pareja ${equipo + 1}<br>gana el juego!`;					
-					// Mostrar el bocadillo en el centro de la mesa primero
-					mostrarBocadilloCentral(mensajeCentral, 0); // Mostrar por 4 segundos
+	
 					// Sumar 1 al juego correspondiente
 					data.juegos[equipo] += 1;
 					data.puntos[0] = 0;
-					data.puntos[1] = 0;						
-
+					data.puntos[1] = 0;		
+					mesa.puntos[0] = 0;
+					mesa.puntos[1] = 0;					
+					console.log("BOCADILLO JUEGO GANA el juego ", equipo, " juegos parametro: ", juegos_vaca, " juegos ganados: ", data.juegos[equipo]);
 					// Actualizar los juegos en el marcador
 					document.getElementById('puntos-pareja1').textContent = data.puntos[0];
 					document.getElementById('puntos-pareja2').textContent = data.puntos[1];				
@@ -2693,9 +2767,13 @@ button:active {
 					document.getElementById('juegos-pareja2').textContent = data.juegos[1];
 
 					// Mensaje en consola para depuración
+					console.log("Mensaje central: ", mensajeCentral, " data.puntos: ", data.puntos, " apuesta: ", apuesta);
 					console.log(`¡La pareja ${equipo + 1} ha superado los ${puntos_juego} puntos! Juegos actualizados: ${data.juegos[equipo]}`);
-					if (data.juegos[equipo] === juegos_vaca) {  // pongo uno para las pruebas
+					if (data.juegos[equipo] === juegos_vaca) {  
 						mostrarPopup(mesa_id, mensajeCentral);
+					} else {
+						alert("Entra a mostrarBocadilloCentral");
+						mostrarBocadilloCentral(mensajeCentral, 0); // Mostrar por 4 segundos
 					}
 				}
 			});	
@@ -2726,9 +2804,10 @@ button:active {
 			esperarBocadilloPuntos(bocadilloPuntos);
 		}
 		console.log("Ha enseñado el bocadillo puntos");
+		
 		// Actualizar turno
 		//alert("Hasta aqui bien 3");
-		mostrarTurno(jugadorActual);
+		mostrarTurno(jugadorActual, turnoActual+1);
 		console.log('Interfaz ronda. es el turno de: ', jugadorActual, ' jugador actual: ', jugadorActual, ' jugador cliente: ', jugadorCliente);
 		ocultarMesaBotones();
 		const btnRepartir = document.getElementById("btn-repartir");
@@ -2746,7 +2825,8 @@ button:active {
 		const manoJugadorIdx2 = reorganizedJugadores.findIndex(jugador => jugador === jugadorAnterior);	
 		resaltarManoDescarte(manoJugadorIdx);
 		mostrarBocadillo2(manoJugadorIdx, "Es mano ");		
-		mostrarBocadillo2(manoJugadorIdx2, "Reparto");		
+		mostrarBocadillo2(manoJugadorIdx2, "Reparto");	
+		//alert("Termina actualizar_interfaz_ronda");		
 		// Ocultar el botón de repartir 
 		//const btnRepartir = document.getElementById("btn-repartir");
 		//btnRepartir.classList.add("oculto");
@@ -2803,7 +2883,7 @@ button:active {
 			bocadilloCentral.classList.remove('mensaje-oculto');
 			bocadilloCentral.classList.add('mensaje-visible');
 			// Ocultarlo después de 8 segundos
-			await esperar(4000);
+			await esperar(8000);
 			//setTimeout(() => {
 				bocadilloCentral.classList.remove('mensaje-visible');
 				bocadilloCentral.classList.add('mensaje-oculto');
@@ -2813,10 +2893,10 @@ button:active {
 	async function esperarBocadilloPuntos(bocadilloPuntos) {
 		// Muestra el bocadillo
 		bocadilloPuntos.classList.remove('oculto');
-		await esperar(5000);
+		await esperar(8000);
 		// Después ocultamos el bocadillo de puntos
 		bocadilloPuntos.classList.add('oculto');
-	}
+	} 
 	function esperar(ms) {
 		return new Promise(resolve => setTimeout(resolve, ms));
 	}
@@ -2894,6 +2974,7 @@ button:active {
 	});
 	
 	
+	
 	/* function mostrarHablado(jugador, mensaje) {
         let mensajeElemento = document.getElementById(`mensaje-jugador-${jugador}`);
         mensajeElemento.innerText = mensaje;
@@ -2910,8 +2991,7 @@ button:active {
 	function esperado(ms) {
 		return new Promise(resolve => setTimeout(resolve, ms));
 	}
- 
- 
+  
     function limpiarHablado() {
         document.querySelectorAll(".mensaje-jugador").forEach(el => {
             el.classList.remove("mostrar");
