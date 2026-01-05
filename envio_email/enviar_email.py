@@ -6,9 +6,9 @@ class Ccorreo:
     def enviar_email(correo_destinatario, codigo_activacion):
         # Configura los detalles del servidor SMTP
         servidor_smtp = "smtp.gmail.com"
-        puerto_smtp = 587
-        usuario = "musdocemas@gmail.com"
-        contraseña = "dmyz ajrs lnim qcht"
+        puerto_smtp = 999
+        usuario = "xxxxxxxxxxxxs@gmail.com"
+        contraseña = "xxxxxxxxxxxxxxxxxxxx"
         #correo_destinatario = 'lpablonieto@gmail.com'
         # Configuración del correo
         mensaje = MIMEMultipart()
