@@ -110,7 +110,7 @@ def admin_panel():
    # print("Usuario sesion: ", session.get("usuario"))
     if session.get("usuario") != "admin":
         return "Acceso denegado", 403  # Bloquea si no es admin
-    #calamar1234!
+   
     resultado = None
     column_names = []
     mensaje = None
@@ -230,23 +230,23 @@ def enviar_correo():
 
     # Configuración del correo
     smtp_server = "smtp.gmail.com"
-    smtp_port = 587
-    smtp_usuario = "musdocemas@gmail.com"  # Cambia esto por tu cuenta de Gmail
-    smtp_password = "dmyz ajrs lnim qcht" # Cambia esto por tu contraseña o token de aplicación
+    smtp_port = 999
+    smtp_usuario = "xxxxxxxx@gmail.com"  # Cambia esto por tu cuenta de Gmail
+    smtp_password = "xxxxxxxxxxxxxxxx" # Cambia esto por tu contraseña o token de aplicación
 
     # Crear el mensaje
     cuerpo_mensaje = f"De: {nombre}\nEmail: {email}\n\n{mensaje}"
     msg = MIMEText(cuerpo_mensaje)
     msg['Subject'] = asunto
     msg['From'] = email
-    msg['To'] = "musdocemas@gmail.com"  # Buzón de destino
+    msg['To'] = "xxxxxxxxx@gmail.com"  # Buzón de destino
 
     try:
         # Enviar el correo
         server = smtplib.SMTP(smtp_server, smtp_port)
         server.starttls()
         server.login(smtp_usuario, smtp_password)
-        server.sendmail(email, "musdocemas@gmail.com", msg.as_string())
+        server.sendmail(email, "xxxxxxxxx@gmail.com", msg.as_string())
         server.quit()
 
         print("Correo enviado correctamente", "success")
