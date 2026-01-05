@@ -1,0 +1,157 @@
+
+Mejoras:
+	- Posibilidad de entrar a mirar en una mesa en juego.
+	- Idea sobre crear partidas offline: hacer quedadas, organizar campeonatos.
+	- Reloj con tiempo. Fase II.
+  	- Incluir puntuación por usuario (nivel).
+	- Reducir el tamano del tablero o ponerlo encima del chat.
+	- Incluir un botón que permita ver resumen última ronda. Lo he ampliado a 8 segundos.
+	- Grabar estadísticas por jugador con puntuación, partidas jugadas, ganadas, perdidas, etc.
+	- Habilitar una zona de administración desde donde pueda: eliminar una mesa, banear a un jugador, 
+	entrar a una mesa en juego, detectar si se registra con dos usuarios diferentes y entra a la misma mesa, etc.
+	- Opción de que cada acción del jugador se guarde en un log que permita luego reconstruir las partidas.
+
+Tareas pendientes (backlog):
+	- el owner se debería sentar automáticamente en la mesa que abre y si se sale cerrar la mesa ya que los bots necesitan del owner.
+	- El botón de comenzar solo lo pueden pulsar los 4 jugadores de la mesa. Si lo pulsa otro no dejar.
+	- Si un jugador no responde en un tiempo, que la respuesta la de un bot pasado un tiempo. Fase II.
+	- Si un jugador se desconecta sustituirlo por bot y si vuelve a entrar quitar el bot.
+	- Si un jugador se cae cuando tiene el turno de Mus-Corto o Descartar o botones de juego, se para la partida.
+	- Al ordenar después de descarte no lo hace bien. Solo ordena las nuevas cartas pero no las 4.
+	- Al inicio de la partida e interacturar el cliente, da un saltito la mesa.
+	- Pintar hablado en cliente y arriba a su derecha si es posible.
+	- Parece que limpiar hablado no limpia al último que ha hablado.
+	- Flecha atrás es como desconectarse. 
+	- El botón comenzar de sala de espera y el de repartir de mesa de juego ¿no deberían pulsarse en cada cliente? 
+
+Seguridad:
+	- Hay que proteger las páginas para que no se pueda acceder al código: js, variables, ver código fuente, etc.
+	- Evitar que con la misma IP pueda haber más de dos usuarios conectados.
+	- Verificar la vulnerabilidad XSS de inyección de código en cliente.
+	- Un control que me permita saber si un usuario está ya logado por si quiere volver a entrar desde otro navegador, no dejarle.
+	- Si se registra con dos usuarios diferentes y entra a la misma mesa con los dos, detectarlo.
+	- Revisar que si llamammos a cliente no se envíe la estructura de la mesa. Con calma.
+
+Varios:
+	- Hacer limpieza del código, carpetas, imágenes, llevar css y JS fuera de html, etc. Segmentandar el código Python.
+	- Ver consumos de CPU por mesa para ver los límites de memoria, etc.
+	- Habrá que separar el css y quitar todo el debug en py y js.
+
+	- Si una partida ha quedado sin terminar en el servidor queda la mesa activa y si al día siguiente se entra se retoma. Ok.
+	- Hay que destruir una mesa una vez que lleve por ejemplo una hora sin actividad. Ok.
+	- Asegurarse de que cada mesa es independiente. En observación. Hacer prueba masiva abriendo 3 o 4 mesas.
+	- Al punto le da ganador a 28 sobre 30. En observación.
+	- El turno de la mano en algún caso no se ha respetado y ha empezado el lance por otro jugador. En observación.
+	- En el calculo de ganador de pares pueden medias de reyes sobre duples de gallegos. En observación.
+	- Se ha vuelto a meter dos veces una de ellas en vacío y se queda la pantalla sin cartas. Parece que es cuando solo uno tiene juego. En observación.
+	- Permitir uso de bots. Ok.
+	  Cuando se desconecta un jugador, habría que preguntar en qué punto se ha quedado y continuar. Ok.
+	- Comprobar los tiempos cuando hay más de un bot. Ok.
+	- En descartar, el bot se queda parado y no hace nada. Ok.
+	- Poder empezar partida sin completar la mesa sustituyando por bots. Ok.
+	- He cambiado el registro de usuarios. Probarlo dando de alta nuevos usuarios. Por ejemplo tres bots. Ok.
+	- Decidir plan en Render. Ok.
+	- Si pulsa F5 debería no hacer nada. Ok.
+	- A veces el bot responde a un órdago con otro órdago. O Ve o Pasa. OK. En observación.
+	- Probar con dos bots, con uno y con cero. Ok.
+	- Si solo queda uno en la mesa y cierra sesión, borrar la mesa. Ok.
+	- Retomar el borrado de mesas inactivas en una hora por ejemplo. Ok.
+	- Si se cambia la ubicación de la mesa, al comenzar no guarda la última. ¿?
+	- Si doy cerrar sesión y luego vuelvo a entrar, me mete en la partida. Si había tres bots, cerrar sesión debe destruir la mesa. Ok. en observación.
+	- Bajar algún segundo el tiempo de respuesta de los bots. Ok.
+	- No se está contabilizando bien los puntos al finalizar el juego. Parece que el órdago cuando no se ve se cuenta 40 puntos. Ok.
+	- Quitar bocadillo y dejar hablado. Limpiar hablado cuanto toque. Ok.
+	- Cuando se canten pares y juego debe quedar escrito en cada jugador si tienen pares o no y juego o no durante el lance. Ok.
+	- Ayer en una prueba le dio ganador del órdago al contrario. En observación.
+	- En algún momento, los turnos se alteran. En observación.	
+	- En el resumen final, debería cada pareja identificarse por su color. Ok.
+	- Las señas de duples están mal. Ok.
+	- El registro cuando hay error en un campo, también pide introducir el código de activación. Ok.
+	- Si alguien se sale en caliente cerrando el navegador hay que avisar al resto y sustituirlo por bot. OK.
+	- Crear un botón Mi mesa, donde se pueda definir los puntos por juego y los juegos por baca para esa partida. Por defecto son 2 de 40. OK.
+	  También el tiempo de espera hasta que un jugador hable.
+	- Si una mesa esta en juego, debería desaparecer el botón de comenzar y poner En juego en rojo. Ok.
+	- En la mesa 2 si le das a comenzar con un solo jugador tira pa lante. Ok.
+	- Si un jugador está en una mesa en una partida en juego, no debería poder entrar a otra mesa. Ok.
+	- La sombra del tablero es más corta que el tablero. Ok.
+	- Si termina una partida y se le da salir, en la sala de espera se tiene que ver la mesa o bien en espera o no aparecer. Ok.
+	- El botón de repartir solo debería aparecer al inicio de la partida. Ok
+	- El bot cuando corta y no es mano, el bocadillo de corto le sale al mano. Ok.
+	- Entrar en http://www.dondominio.com y consultar si el tema de verificación del dominio que solicita ICANN no es un fraude. Ok.
+	- Poner un acepto / aviso para el tema de uso de cookies. Ok.
+	- Mirar a ver si hay gente registrada. Ok.
+	- Si abrimos una segunda mesa y van entrando jugadores, no se refresca en los otros jugadores. Ok.
+	- Si vuelve a reconectar incluirle en la mesa con la situación del juego actual. Ok.
+	- No funcionan los enlaces de pie de página en index.html. Ok.
+	- El órdago puede ser respondido con órdago y no permite ver. Ok.
+	- Intentar que las páginas de login y registro sean emergentes sobre la home como en ludo. Ok más o menos.
+	- Publicar en un servidor de hosting. OK. Pte plan de pago.
+	- Para el juego real, se deberán ocultar las cartas excepto del jugador sesión. Ok.
+	- Tener en cuenta que las mesas hay que destruirlas una vez terminada la partida para liberar memoria. Ok.
+	- Un jugador solo puede crear una mesa y al crearla debería entrar automáticamente. Ok.
+	- Volver a probar el envío por email del registro.ok
+	- Enviar email desde contactar. Ok.
+	- Si se salen todos los jugadores de una mesa esta se tiene que eliminar. Ok.
+	- Se debería poder salir de la partida. Incluir botón que vuelva a la sala de espera. Ok. En Cerrar Sesión y al finalizar la partida.
+	- Al terminar la partida, se debería elejir volver a jugar o salir. Ok. Pte tratamiento bots.
+	- Permite marcar carta para descarte cuando no corresponde. En observacion.
+	- Revisar tema broadcast y rooms. Ok.
+	- Mover correctamente el mazo. De momento lo elimino. Ok.
+	- Las cartas han perdido definición al comprimirlas y reducirlas. Les falta nitidez. Ok.
+	- Si las mesas llegan a 999, se debería volver a empezar desde 1. Ok. Difícil de probar. Poner 5 para probar.
+	- Si suma uno porque no y llega a 40, continúa a siguiente lance cuando debería finalizar el juego. Ok Probar.
+	- si envida 25 por ejemplo la primera vez, en bocadillo dice envido cuando debería decir envido 25. Ok Probar.
+	- Cuando hay solo dos jugadores con juego opuestos, el turno se atasca en el primero. Ok. Probar.
+	- Al final, sale que la pareja tal gana el juego y en tablero se deberían mantener los puntos mientras dure el mensaje. Ok Probar.
+	- En el encabezado de la mesa de juego porner el número de la mesa , guion. Ok. Probar.
+	- Si solo es un envite, el bocadillo debería decir envido y no envido 2 y van 2. Ok.
+	- En el chat, Sustituir Docemas por el lance. Ok. Probar.
+	- En la secuencia de pasar en alguna ocasión salta a siguiente lance antes de terminar todos los jugadores. Ok. En observación.
+	- Cambiar el nombre de la mesa quitendo el _ en el chat. Ok Probar.
+	- Bloquear botón ver si no hay apuesta. OK.
+	- Hacer que el chat haga scroll hacia abajo según se va llenando. OK.
+	- Los dejes de envite a pares y juego no se están contabilizando en tratar_lance. OK.
+	- si hay un envite y no se ve, luego no se debe contar el lance de grande o chica. Si es a pares o juego solo las cartas del ganador. OK.
+	- Incluir el tanteo de los dejes en el cuadro final.	Ok
+	- Inicializar el contador de envite en siguiente lance. OK.
+	- Controlar los dejes en tiempo real comprobando si suman más de 40 para cerrar el juego. OK.
+	- El mensaje "repartiendo cartas en chat, debe tener como usuario: el usuario que reparte. Ok Probar.
+	- Al entrar por primera vez en la sala de espera, se deberían pintar las mesas al cliente. Ok.
+	- Asegurar que la mano y turnos son los correctos después de primer lance. OK.
+		La primera ronda el mano es el que corta, si no en nueva ronda es el que toque. OK.
+		Si es la primera ronda y todos pasan, el nuevo mano corre un turno, sino el que toque.Ok. Probar.
+	- Flujo:
+		- Pruebas línea paso. OK.
+		- Pruebas apos. OK.
+		- Pruebas veo.  OK.
+		- Pruebas subo y vuelvo a subir. Ok aunque en observación la gestión de turnos. Ok.
+		- Pruebas ord. OK.
+	- Escanear de nuevo las cartas. OK.
+	- Bloquear mesa botones cuando se termina la ronda antes de mostrar marcador, para evitar dobles pulsaciones. Ok. En estudio.
+	- Si se sube, el bocadillo debería decir tantas más y van el total. Ok.
+	- Estas tres mejoras requieren cambios en BBDD:
+		- Cerrar el registro con email de verificación. Ok.
+			- Si se registra: Se ha enviado un correo de verificación a su cuenta aaaa@gmail.com Ok.
+			- Validar que el email sea válido en el registro. Ok.
+			- La clave debería tener más de 6 caracteres. Ok.
+			- Hay que validar en la identificación que esté validado el registro. Ok
+	- Darle una vuelta a la home, contenidos, logos, aspecto.
+		- Dentro de la página entrar a jugar:
+			- Los logos de la cabecera hay que mejorarlos y no funcionan. Ok.
+			- Habría que dibujar en pequeño el avatar del usuario en lugar del genérico. Ok
+			- Cuando dice bienvenido, aparece el nombre pero si entras en perfil y vuelves, desaparece. Ok
+			- El logo de la página habría que sustituirlo por el circular. Ok
+
+
+
+
+
+
+
+
+
+
+
+
+
+
