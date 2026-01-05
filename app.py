@@ -442,13 +442,24 @@ def storage():
         return render_template('registro.html', nombrep=nombrep,usuario=alias,password=password,correo=correo,mensaje='El nombre del usuario ya lo tiene otro usuario asignado.')
     
     if leidos == 0:
+        codigo_activacion = 123456
+        verificado = True
+        CUsuarios.insertarUsuario(nombrep,alias,correo,password_hash,avatar_url,True, '1234',now,codigo_activacion,verificado)
+        print("DEBUG. ALTA USUARIO: codigo activacion", codigo_activacion, " VERIFICADO: ", verificado)    
+        session['usuario'] = alias
+        session['nombre'] = nombrep
+        session['avatar'] = avatar_url
+        return render_template('entrarajugar.html', usuario=alias, nombre=nombrep, avatar=avatar_url)
+    '''
+    Esto funciona con envío de correo con la clave de activación
+    if leidos == 0:
         # Generar un número aleatorio de 6 dígitos
         codigo_activacion = str(random.randint(100000, 999999))   
         CUsuarios.insertarUsuario(nombrep,alias,correo,password_hash,avatar_url,True, '1234',now,codigo_activacion,verificado)
         print("DEBUG. ALTA USUARIO: codigo activacion", codigo_activacion, " VERIFICADO: ", verificado)    
         Ccorreo.enviar_email(correo, codigo_activacion)
         return render_template('registro.html', nombrep=nombrep,usuario=alias,password=password,correo=correo,mostrar_verificacion = True,mensaje='Se ha enviado un correo con el código de activación.')
-
+    ''' 
     if leidos > 0 and (datosusuario [0] [10] == False):
         print("DEBUG. ALTA USUARIO: codigo verificacion BD: ", datosusuario [0] [9], " verificacion del usuario: ", verificacion) 
         if datosusuario [0] [9] != verificacion:            
